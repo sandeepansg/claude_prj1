@@ -30,10 +30,14 @@ class ChebyshevDH:
         raise ValueError(f"S-box entries must be between 0 and {sbox_size-1}")
 
     def generate_keypair(self, entropy=None):
-        """Generate a private and public key pair."""
-        # Add entropy to randomness if provided
-        if entropy:
-            random.seed(hash(f"{entropy}{time.time()}"))
+    """Generate a private and public key pair."""
+    # Sanitize entropy input
+    if entropy is not None:
+        if not isinstance(entropy, (str, bytes)):
+            raise TypeError("Entropy must be a string or bytes")
+        # Limit entropy length to prevent DoS
+        entropy = str(entropy)[:1024]
+        random.seed(hash(f"{entropy}{time.time()}"))
 
         # Generate private key of appropriate length
         private_min = 2 ** (self.private_bits - 1)
@@ -51,8 +55,15 @@ class ChebyshevDH:
         return private, public, raw_public
 
     def compute_shared(self, private, other_public):
-        """Compute shared secret using DH principle."""
-        return self.cheby.eval(private, other_public)
+    """Compute shared secret using DH principle."""
+    # Validate inputs
+    if not isinstance(private, int) or private <= 0 or private >= self.mod:
+        raise ValueError(f"Private key must be an integer between 1 and {self.mod-1}")
+    
+    if not isinstance(other_public, int) or other_public <= 0 or other_public >= self.mod:
+        raise ValueError(f"Public key must be an integer between 1 and {self.mod-1}")
+        
+    return self.cheby.eval(private, other_public)
 
     def simulate_exchange(self, alice_entropy=None, bob_entropy=None):
         """Simulate complete key exchange between two parties."""

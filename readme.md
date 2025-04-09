@@ -8,6 +8,7 @@ This cryptosystem implements a key exchange protocol using the semigroup propert
 
 ### Features
 
+- **Quantum-Resistant Key Exchange**: Based on the hardness of Chebyshev polynomial discrete logarithm problem
 - **Scalable Security**: Automatically adjusts security parameters based on desired private key strength
 - **Optimized Polynomial Calculation**: Uses multiple evaluation strategies based on polynomial degree
 - **Mathematical Verification**: Tests semigroup and commutativity properties critical to security
@@ -16,6 +17,7 @@ This cryptosystem implements a key exchange protocol using the semigroup propert
 - **Feistel Cipher**: Implementation of the Feistel structure for symmetric encryption
 - **Dynamic S-boxes**: S-boxes generated from the shared secret for enhanced security
 - **Complete Encryption Pipeline**: Key exchange followed by symmetric encryption
+- **Cryptographic Analysis**: Tests avalanche effect, statistical properties, and S-box quality
 
 ## Installation
 
@@ -29,8 +31,8 @@ This cryptosystem implements a key exchange protocol using the semigroup propert
 
 1. Clone the repository:
    ```
-   git clone https://github.com/sandeepansg/claude_prj1.git
-   cd claude_prj1
+   git clone https://github.com/sandeepansg/chebyshev-crypto.git
+   cd chebyshev-crypto
    ```
 
 2. Install dependencies:
@@ -48,12 +50,23 @@ Run the demonstration script to generate keys, perform a key exchange, verify se
 python main.py
 ```
 
+The interactive demo will guide you through:
+- Setting security parameters
+- Generating key pairs
+- Performing a key exchange
+- Verifying mathematical properties
+- Generating an S-box from the shared secret
+- Encrypting and decrypting a message using a Feistel cipher
+- Analyzing the security of the implementation
+
 ### As a Library
 
 You can import the components and use them in your own applications:
 
 ```python
-from claude_prj1 import ChebyshevDH
+from chebyshev.poly import ChebyshevPoly
+from chebyshev.security import SecurityParams
+from crypto.dh import ChebyshevDH
 from crypto.feistel import FeistelCipher
 from crypto.sbox import SBoxGenerator
 
@@ -118,10 +131,32 @@ The Feistel network is a symmetric structure used in block ciphers. It consists 
 
 Substitution boxes (S-boxes) are a basic component of symmetric key algorithms which perform substitution. In our implementation, S-boxes are dynamically generated from the shared secret, providing a unique transformation for each key exchange session.
 
+## Security Considerations
+
+- The security of this system relies on the difficulty of the Chebyshev polynomial discrete logarithm problem
+- Key sizes are automatically scaled to maintain appropriate security levels
+- For production use, consider using longer key lengths (64-bit private keys or larger)
+- The system enforces minimum key sizes to prevent insecure configurations
+- The Feistel cipher implementation uses dynamically generated S-boxes from the shared secret, enhancing security
+- The number of Feistel rounds can be adjusted to balance security and performance
+- CBC mode with a random IV is used for the Feistel cipher to prevent pattern analysis
+- Security testing includes avalanche effect, statistical randomness, and invertibility tests
+
+## Performance
+
+The implementation uses several optimizations for Chebyshev polynomial evaluation:
+
+- **Matrix exponentiation** for large polynomial degrees
+- **NumPy coefficient calculation** for medium-sized degrees
+- **Memoized recursive calculation** for smaller degrees
+- **Binary exponentiation** for efficient computation
+
+The Feistel cipher implementation is also optimized for performance while maintaining a high level of security.
+
 ## Project Structure
 
 ```
-claude_prj1/
+chebyshev-crypto/
 ├── __init__.py                 # Package exports
 ├── chebyshev/
 │   ├── __init__.py             # Chebyshev module exports
@@ -140,26 +175,6 @@ claude_prj1/
 └── requirements.txt            # Dependencies
 ```
 
-## Security Considerations
-
-- The security of this system relies on the difficulty of the Chebyshev polynomial discrete logarithm problem
-- Key sizes are automatically scaled to maintain appropriate security levels
-- For production use, consider using longer key lengths (64-bit private keys or larger)
-- The system enforces minimum key sizes to prevent insecure configurations
-- The Feistel cipher implementation uses dynamically generated S-boxes from the shared secret, enhancing security
-- The number of Feistel rounds can be adjusted to balance security and performance
-
-## Performance
-
-The implementation uses several optimizations for Chebyshev polynomial evaluation:
-
-- **Matrix exponentiation** for large polynomial degrees
-- **NumPy coefficient calculation** for medium-sized degrees
-- **Memoized recursive calculation** for smaller degrees
-- **Binary exponentiation** for efficient computation
-
-The Feistel cipher implementation is also optimized for performance while maintaining a high level of security.
-
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -169,6 +184,15 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+## Future Enhancements
+
+- Add support for key derivation function (KDF) to convert shared secrets into cryptographic keys
+- Implement additional block cipher modes (CTR, GCM)
+- Add digital signature scheme based on Chebyshev polynomials
+- Create a web-based demo interface
+- Add benchmarking tools for performance comparison with traditional algorithms
+- Implement hardware acceleration for polynomial evaluation
 
 ## License
 

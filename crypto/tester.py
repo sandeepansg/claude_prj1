@@ -32,27 +32,42 @@ class SecurityTester:
         # Validate r and s are within safe range
         if r <= 0 or s <= 0 or r >= self.mod or s >= self.mod:
             raise ValueError(f"r and s must be between 1 and {self.mod-1}")
-
-            results = []
-            for i in range(count):
-                x = random.randint(1, self.mod - 1)
-                t_s_x = self.cheby.eval(s, x)
-                t_r_t_s_x = self.cheby.eval(r, t_s_x)
-                t_rs_x = self.cheby.eval(r * s, x)
-                results.append({
-                    "test": i + 1,
-                    "x": x,
-                    "t_s_x": t_s_x,
-                    "t_r_t_s_x": t_r_t_s_x,
-                    "t_rs_x": t_rs_x,
-                    "verified": t_r_t_s_x == t_rs_x
-                })
-            return results
+        
+        # Fixed indentation - this block was previously improperly indented
+        results = []
+        for i in range(count):
+            x = random.randint(1, self.mod - 1)
+            t_s_x = self.cheby.eval(s, x)
+            t_r_t_s_x = self.cheby.eval(r, t_s_x)
+            t_rs_x = self.cheby.eval(r * s, x)
+            results.append({
+                "test": i + 1,
+                "x": x,
+                "t_s_x": t_s_x,
+                "t_r_t_s_x": t_r_t_s_x,
+                "t_rs_x": t_rs_x,
+                "verified": t_r_t_s_x == t_rs_x
+            })
+        return results
 
     def test_commutative(self, count, r, s):
         """Test commutativity: T_r(T_s(x)) = T_s(T_r(x)) mod q"""
         if not self.cheby:
             raise ValueError("DH instance required for polynomial tests")
+            
+        # Input validation (missing from original code)
+        if not isinstance(count, int) or count <= 0:
+            raise ValueError("Test count must be a positive integer")
+
+        if not all(isinstance(x, int) for x in [r, s]):
+            raise TypeError("r and s must be integers")
+            
+        # Set reasonable limits
+        count = min(count, 100)  # Prevent excessive computation
+
+        # Validate r and s are within safe range
+        if r <= 0 or s <= 0 or r >= self.mod or s >= self.mod:
+            raise ValueError(f"r and s must be between 1 and {self.mod-1}")
             
         results = []
         for i in range(count):

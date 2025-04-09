@@ -13,27 +13,32 @@ class SecurityTester:
         self.dh = dh_instance
         self.cheby = dh_instance.cheby if dh_instance else None
         self.mod = dh_instance.mod if dh_instance else None
-
-    def test_semigroup(self, count, r, s):
-        """Test semigroup property: T_r(T_s(x)) = T_{r*s}(x) mod q"""
+        
+    def _validate_test_params(self, count, r, s):
+        """Common validation for test parameters."""
         # Input validation
         if not isinstance(count, int) or count <= 0:
             raise ValueError("Test count must be a positive integer")
 
         if not all(isinstance(x, int) for x in [r, s]):
             raise TypeError("r and s must be integers")
-
-        if not self.cheby:
-            raise ValueError("DH instance required for polynomial tests")
-
+            
         # Set reasonable limits
         count = min(count, 100)  # Prevent excessive computation
 
         # Validate r and s are within safe range
         if r <= 0 or s <= 0 or r >= self.mod or s >= self.mod:
             raise ValueError(f"r and s must be between 1 and {self.mod-1}")
+            
+        return count
+
+    def test_semigroup(self, count, r, s):
+        """Test semigroup property: T_r(T_s(x)) = T_{r*s}(x) mod q"""
+        if not self.cheby:
+            raise ValueError("DH instance required for polynomial tests")
+            
+        count = self._validate_test_params(count, r, s)
         
-        # Fixed indentation - this block was previously improperly indented
         results = []
         for i in range(count):
             x = random.randint(1, self.mod - 1)
@@ -55,19 +60,7 @@ class SecurityTester:
         if not self.cheby:
             raise ValueError("DH instance required for polynomial tests")
             
-        # Input validation (missing from original code)
-        if not isinstance(count, int) or count <= 0:
-            raise ValueError("Test count must be a positive integer")
-
-        if not all(isinstance(x, int) for x in [r, s]):
-            raise TypeError("r and s must be integers")
-            
-        # Set reasonable limits
-        count = min(count, 100)  # Prevent excessive computation
-
-        # Validate r and s are within safe range
-        if r <= 0 or s <= 0 or r >= self.mod or s >= self.mod:
-            raise ValueError(f"r and s must be between 1 and {self.mod-1}")
+        count = self._validate_test_params(count, r, s)
             
         results = []
         for i in range(count):
@@ -87,17 +80,26 @@ class SecurityTester:
             })
         return results
         
-    def test_sbox_properties(self, sbox):
+    def test_sbox_properties(self, sbox, test_samples=None):
         """
         Test cryptographic properties of the S-box.
         
         Args:
             sbox (list): The S-box to test
+            test_samples (int): Number of samples for testing (optional)
             
         Returns:
             dict: Results of various cryptographic tests
         """
         box_size = len(sbox)
+        
+        # Set reasonable sample size based on box size
+        if test_samples is None:
+            # Default number of samples
+            sample_size = min(box_size, 256)
+        else:
+            # Use provided sample size, with bounds
+            sample_size = min(max(16, test_samples), box_size)
         
         # Check for bijection (one-to-one mapping)
         is_bijective = len(set(sbox)) == box_size
@@ -105,18 +107,14 @@ class SecurityTester:
         # Check for fixed points
         fixed_points = sum(1 for i in range(box_size) if sbox[i] == i)
         
-        # Calculate nonlinearity metrics (simplified approach)
-        # For a full cryptanalysis, more sophisticated tests would be needed
-        # For very large S-boxes, limit the analysis to avoid excessive computation
-        sample_size = min(box_size, 256)
-        
+        # Calculate nonlinearity metrics with consistent sample size
         differences = []
-        # Only test a limited number of difference patterns for large S-boxes
+        # Only test a limited number of difference patterns
         test_patterns = min(sample_size, box_size)
         
         for i in range(1, test_patterns):
             xor_differences = []
-            # Sample a limited number of input values for large S-boxes
+            # Sample a limited number of input values
             for x in range(0, sample_size):
                 input_diff = x ^ i  # XOR difference in input
                 # Ensure input_diff is within S-box range
@@ -130,13 +128,16 @@ class SecurityTester:
         
         avalanche_score = max(differences) if differences else 1.0
         
-        # Calculate SAC (Strict Avalanche Criterion) - simplified
+        # Calculate SAC (Strict Avalanche Criterion) with consistent approach
         sac_score = 0
         if box_size <= 256:  # Only calculate for reasonably sized S-boxes
             sac_total = 0
             sac_count = 0
-            for i in range(min(16, box_size)):  # Test a subset of bits
-                for j in range(min(16, box_size)):  # Test a subset of inputs
+            test_bits = min(16, box_size)
+            test_inputs = min(16, box_size)
+            
+            for i in range(test_bits):  # Test a subset of bits
+                for j in range(test_inputs):  # Test a subset of inputs
                     flipped_j = j ^ (1 << i % 8)  # Flip one bit
                     if flipped_j >= box_size:
                         continue
@@ -153,10 +154,12 @@ class SecurityTester:
             "avalanche_score": avalanche_score,
             "ideal_avalanche": 1/sample_size,
             "sac_score": sac_score,
+            "sample_size": sample_size,
+            "test_patterns": test_patterns,
             "security_score": 1 - (avalanche_score - 1/sample_size) if avalanche_score >= 1/sample_size else 0.99
         }
         
-    def test_feistel_properties(self, cipher, iterations=100):
+    def test_feistel_properties(self, cipher, iterations=50):
         """
         Test the cryptographic properties of a Feistel cipher.
         
@@ -167,11 +170,10 @@ class SecurityTester:
         Returns:
             dict: Results of various tests
         """
-        # Tests to run:
-        # 1. Avalanche effect (small input changes -> large output changes)
-        # 2. Completeness (each output bit depends on each input bit)
-        # 3. Invertibility (decrypt(encrypt(m)) == m)
-        # 4. Statistical randomness (basic checks)
+        # Validate iterations and set reasonable limit
+        if not isinstance(iterations, int) or iterations <= 0:
+            raise ValueError("Iterations must be a positive integer")
+        iterations = min(iterations, 100)  # Prevent excessive computation
         
         start_time = time.time()
         results = {}
@@ -179,7 +181,8 @@ class SecurityTester:
         # 1. Test invertibility (basic property)
         invertibility_success = 0
         invertibility_times = []
-        for _ in range(iterations):
+        
+        for i in range(iterations):
             # Random message length between 1 and 100 bytes
             msg_len = random.randint(1, 100)
             message = os.urandom(msg_len)
@@ -194,12 +197,15 @@ class SecurityTester:
                 
         results["invertibility"] = {
             "success_rate": invertibility_success / iterations,
-            "avg_time": sum(invertibility_times) / len(invertibility_times) if invertibility_times else 0
+            "avg_time": sum(invertibility_times) / len(invertibility_times) if invertibility_times else 0,
+            "tests": iterations
         }
         
-        # 2. Test avalanche effect
+        # 2. Test avalanche effect - use consistent sample size
+        avalanche_tests = min(20, iterations)
         avalanche_scores = []
-        for _ in range(min(20, iterations)):  # Limit avalanche tests
+        
+        for i in range(avalanche_tests):
             # Generate random message (8 bytes for simplicity)
             message = os.urandom(8)
             cipher1 = cipher.encrypt(message)
@@ -226,29 +232,33 @@ class SecurityTester:
         results["avalanche"] = {
             "average": avg_avalanche,
             "ideal": ideal_avalanche,
-            "quality_score": 1 - abs(avg_avalanche - ideal_avalanche) * 2  # Scale to [0,1]
+            "quality_score": 1 - abs(avg_avalanche - ideal_avalanche) * 2,  # Scale to [0,1]
+            "tests": avalanche_tests
         }
         
-        # 3. Test statistical randomness (basic)
+        # 3. Test statistical randomness - use consistent sample size
+        randomness_tests = min(10, iterations)
         bit_counts = [0, 0]  # count of 0s and 1s
         total_samples = 0
         
-        for _ in range(min(10, iterations)):  # Limit randomness tests
+        for i in range(randomness_tests):
             # Generate random message
             message = b"X" * 1000  # Fixed message to check randomness of encryption
             ciphertext = cipher.encrypt(message)
             
             # Count bits
             for byte in ciphertext:
-                for i in range(8):
-                    bit = (byte >> i) & 1
+                for j in range(8):
+                    bit = (byte >> j) & 1
                     bit_counts[bit] += 1
                     total_samples += 1
                     
         bit_balance = min(bit_counts) / max(bit_counts) if max(bit_counts) > 0 else 0
         results["randomness"] = {
             "bit_balance": bit_balance,  # Closer to 1.0 is better
-            "quality_score": bit_balance  # Direct mapping to [0,1]
+            "quality_score": bit_balance,  # Direct mapping to [0,1]
+            "tests": randomness_tests,
+            "bits_analyzed": total_samples
         }
         
         # Calculate overall score (weighted average)
@@ -260,5 +270,6 @@ class SecurityTester:
         
         results["overall_score"] = overall_score
         results["time_taken"] = time.time() - start_time
+        results["total_tests"] = iterations
         
         return results

@@ -28,9 +28,28 @@ class SecurityParams:
     DEFAULT_SBOX_SIZE = 256
     MAX_SBOX_SIZE = 65536  # Add maximum size to prevent performance issues
 
+    # Add maximum private key size
+    MAX_PRIVATE_BITS = 4096  # Add reasonable maximum to prevent performance issues
+    
     @classmethod
     def get_secure_params(cls, private_bits=None):
         """Calculate appropriate parameter sizes based on private key length."""
+        # Use default if not provided or invalid
+        if private_bits is None:
+            private_bits = cls.DEFAULT_PRIVATE_BITS
+        
+        # Type check
+        if not isinstance(private_bits, int):
+            raise TypeError("private_bits must be an integer")
+            
+        # Enforce minimum and maximum private key size
+        if private_bits < cls.MIN_PRIVATE_BITS:
+            print(f"Warning: Private key size {private_bits} is below minimum. Using {cls.MIN_PRIVATE_BITS} bits.")
+            private_bits = cls.MIN_PRIVATE_BITS
+        elif private_bits > cls.MAX_PRIVATE_BITS:
+            print(f"Warning: Private key size {private_bits} exceeds maximum. Using {cls.MAX_PRIVATE_BITS} bits.")
+            private_bits = cls.MAX_PRIVATE_BITS
+        
         # Use default if not provided
         private_bits = private_bits or cls.DEFAULT_PRIVATE_BITS
         

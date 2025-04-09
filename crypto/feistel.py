@@ -4,6 +4,7 @@ Feistel cipher implementation using dynamically generated S-boxes.
 import os
 import struct
 import hashlib
+from chebyshev.security import SecurityParams
 
 
 class FeistelCipher:
@@ -11,24 +12,26 @@ class FeistelCipher:
     Implementation of a Feistel cipher with dynamically generated S-boxes.
     """
 
-    def __init__(self, sbox, rounds=16, block_size=8):
+    def __init__(self, sbox, rounds=None, block_size=None):
         """
         Initialize the Feistel cipher.
 
         Args:
             sbox (list): The S-box for substitution
-            rounds (int): Number of rounds (default: 16)
-            block_size (int): Size of each block in bytes (default: 8)
+            rounds (int, optional): Number of rounds (default is determined by SecurityParams)
+            block_size (int, optional): Size of each block in bytes (default is determined by SecurityParams)
         """
+        # Validate and adjust parameters to ensure security
+        validated_params = SecurityParams.validate_feistel_params(rounds, block_size)
+        self.rounds = validated_params["rounds"]
+        self.block_size = validated_params["block_size"]
+        self.half_block_size = self.block_size // 2
+        
         self.sbox = sbox
         self.inverse_sbox = [0] * len(sbox)
         for i, v in enumerate(sbox):
             self.inverse_sbox[v] = i
             
-        self.rounds = rounds
-        self.block_size = block_size
-        self.half_block_size = block_size // 2
-        
     def _pad_data(self, data):
         """
         Pad data to be a multiple of block_size using PKCS#7 padding.
@@ -231,3 +234,16 @@ class FeistelCipher:
         except ValueError:
             # Handle padding errors gracefully
             return b''.join(plaintext_blocks)
+            
+    def get_cipher_info(self):
+        """
+        Get information about the cipher configuration.
+        
+        Returns:
+            dict: Configuration information
+        """
+        return {
+            "rounds": self.rounds,
+            "block_size": self.block_size,
+            "sbox_size": len(self.sbox)
+        }

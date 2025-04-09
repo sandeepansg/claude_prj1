@@ -25,6 +25,63 @@ class UserInterface:
                 print("Please enter a valid number")
 
     @staticmethod
+    def get_feistel_params():
+        """Get Feistel cipher parameters from user input."""
+        print("\nFeistel Cipher Configuration")
+        print("-" * 30)
+        
+        # Get rounds
+        while True:
+            rounds_input = input(f"Enter number of Feistel rounds [default={SecurityParams.DEFAULT_FEISTEL_ROUNDS}]: ")
+            if not rounds_input.strip():
+                rounds = None  # Use default
+                break
+                
+            try:
+                rounds = int(rounds_input)
+                if rounds >= SecurityParams.MIN_FEISTEL_ROUNDS:
+                    break
+                print(f"Error: Number of rounds must be at least {SecurityParams.MIN_FEISTEL_ROUNDS} for security")
+            except ValueError:
+                print("Please enter a valid number")
+                
+        # Get block size
+        while True:
+            block_input = input(f"Enter block size in bytes [default={SecurityParams.DEFAULT_BLOCK_SIZE}]: ")
+            if not block_input.strip():
+                block_size = None  # Use default
+                break
+                
+            try:
+                block_size = int(block_input)
+                if block_size >= SecurityParams.MIN_BLOCK_SIZE:
+                    break
+                print(f"Error: Block size must be at least {SecurityParams.MIN_BLOCK_SIZE} bytes for security")
+            except ValueError:
+                print("Please enter a valid number")
+                
+        return rounds, block_size
+        
+    @staticmethod
+    def get_sbox_params():
+        """Get S-box parameters from user input."""
+        print("\nS-Box Configuration")
+        print("-" * 30)
+        
+        while True:
+            size_input = input(f"Enter S-box size [default={SecurityParams.DEFAULT_SBOX_SIZE}]: ")
+            if not size_input.strip():
+                return None  # Use default
+                
+            try:
+                box_size = int(size_input)
+                if box_size >= SecurityParams.MIN_SBOX_SIZE:
+                    return box_size
+                print(f"Error: S-box size must be at least {SecurityParams.MIN_SBOX_SIZE} for security")
+            except ValueError:
+                print("Please enter a valid number")
+
+    @staticmethod
     def get_entropy():
         """Get optional entropy for key generation."""
         return input("Enter text for additional entropy (optional): ")
@@ -44,6 +101,7 @@ class UserInterface:
         print("=" * 80)
         print("All security parameters will be automatically determined based on private key length")
         print(f"Default private key length: {SecurityParams.DEFAULT_PRIVATE_BITS} bits")
+        print("You can customize Feistel cipher parameters and S-box size while maintaining security")
 
     @staticmethod
     def show_param_info(params):
@@ -62,6 +120,14 @@ class UserInterface:
         print(f"- Public parameter (hex) = 0x{system_info['param']:X} ({system_info['param_bits']} bits)")
         print(f"- Private key size = {system_info['private_bits']} bits")
         print(f"- Public key size = {system_info['public_bits']} bits")
+
+    @staticmethod
+    def show_feistel_params(cipher_info):
+        """Display Feistel cipher parameters."""
+        print("\nFeistel Cipher Parameters:")
+        print(f"- Number of rounds: {cipher_info['rounds']} rounds")
+        print(f"- Block size: {cipher_info['block_size']} bytes")
+        print(f"- S-box size: {cipher_info['sbox_size']} entries")
 
     @staticmethod
     def show_exchange_results(results, time_taken):
@@ -121,4 +187,75 @@ class UserInterface:
             print(f"  Input value x (hex) = 0x{r['x']:X}")
             print(f"  T_r(x) (hex) = 0x{r['t_r_x']:X}")
             print(f"  T_s(x) (hex) = 0x{r['t_s_x']:X}")
-            print(f"  T_r(T_s(x)) (hex) = 0x{r['t_r_t_s_
+            print(f"  T_r(T_s(x)) (hex) = 0x{r['t_r_t_s_x']:X}")
+            print(f"  T_s(T_r(x)) (hex) = 0x{r['t_s_t_r_x']:X}")
+            print(f"  Result: {'✓ Verified' if r['verified'] else '✗ Failed'}")
+            print()
+
+        print(f"Commutativity property: {'✓ VERIFIED' if success else '✗ FAILED'} for all tests")
+        if success:
+            print("The commutativity property T_r(T_s(x)) = T_s(T_r(x)) holds, which is")
+            print("essential for the security of the key exchange protocol.")
+
+    @staticmethod
+    def show_sbox_info(sbox, properties, time_taken):
+        """Display information about the generated S-box."""
+        print("\n" + "-" * 80)
+        print("S-box Generation and Analysis")
+        print("-" * 80)
+        print(f"S-box generated in {time_taken:.4f} seconds")
+        print(f"S-box size: {properties['box_size']} entries")
+        
+        # Show a sample of the S-box (first 16 entries)
+        print("\nSample of S-box entries (first 16):")
+        for i in range(min(16, len(sbox))):
+            print(f"{i:3d} → {sbox[i]:3d}  ", end="")
+            if (i + 1) % 4 == 0:
+                print()
+        print()
+        
+        # Show S-box properties
+        print("\nS-box Cryptographic Properties:")
+        print(f"- Bijective (one-to-one mapping): {'Yes' if properties['bijective'] else 'No'}")
+        print(f"- Fixed points: {properties['fixed_points']} out of {len(sbox)}")
+        print(f"- Avalanche characteristic: {properties['avalanche_score']:.6f} "
+              f"(ideal: {properties['ideal_avalanche']:.6f})")
+        print(f"- Security score: {properties['security_score']:.4f} (higher is better)")
+        
+        # Evaluate S-box quality
+        quality = "Excellent"
+        if properties['security_score'] < 0.8:
+            quality = "Good"
+        if properties['security_score'] < 0.5:
+            quality = "Fair"
+        if properties['security_score'] < 0.3:
+            quality = "Poor"
+            
+        print(f"- Overall quality: {quality}")
+        print("\nThis S-box will be used for the Feistel cipher encryption.")
+
+    @staticmethod
+    def show_encryption_results(plaintext, ciphertext, decrypted, time_taken):
+        """Display encryption and decryption results."""
+        print("\n" + "-" * 80)
+        print("Feistel Cipher Encryption/Decryption")
+        print("-" * 80)
+        print(f"Encryption/decryption completed in {time_taken:.4f} seconds")
+        
+        # Show the plaintext
+        print(f"\nOriginal message: '{plaintext}'")
+        
+        # Show a preview of the ciphertext (base64 encoded)
+        ciphertext_b64 = base64.b64encode(ciphertext).decode('ascii')
+        preview_length = min(64, len(ciphertext_b64))
+        print(f"Ciphertext (Base64, first {preview_length} chars): {ciphertext_b64[:preview_length]}")
+        
+        # Show the decrypted text
+        print(f"Decrypted message: '{decrypted}'")
+        
+        # Show verification result
+        success = plaintext == decrypted
+        print(f"\nDecryption verification: {'✓ SUCCESS' if success else '✗ FAILED'}")
+        if success:
+            print("The message was successfully encrypted and decrypted, demonstrating")
+            print("the complete security pipeline: key exchange → S-box generation → encryption → decryption")

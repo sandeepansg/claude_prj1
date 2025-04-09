@@ -15,6 +15,16 @@ class SecurityParams:
     # Security scaling factors
     PRIME_TO_PRIVATE_RATIO = 4
     PUBLIC_TO_PRIVATE_RATIO = 2
+    
+    # Feistel cipher security constants
+    MIN_FEISTEL_ROUNDS = 8
+    DEFAULT_FEISTEL_ROUNDS = 16
+    MIN_BLOCK_SIZE = 8
+    DEFAULT_BLOCK_SIZE = 8
+    
+    # S-box security constants
+    MIN_SBOX_SIZE = 256
+    DEFAULT_SBOX_SIZE = 256
 
     @classmethod
     def get_secure_params(cls, private_bits=None):
@@ -39,4 +49,43 @@ class SecurityParams:
             "prime_bits": prime_bits,
             "public_bits": public_bits,
             "param_bits": param_bits
+        }
+        
+    @classmethod
+    def validate_feistel_params(cls, rounds=None, block_size=None):
+        """Validate and adjust Feistel cipher parameters to ensure security."""
+        # Use defaults if not provided
+        rounds = rounds if rounds is not None else cls.DEFAULT_FEISTEL_ROUNDS
+        block_size = block_size if block_size is not None else cls.DEFAULT_BLOCK_SIZE
+        
+        # Enforce minimum values
+        rounds = max(rounds, cls.MIN_FEISTEL_ROUNDS)
+        block_size = max(block_size, cls.MIN_BLOCK_SIZE)
+        
+        # Ensure block_size is even for Feistel structure
+        if block_size % 2 != 0:
+            block_size += 1
+            
+        return {
+            "rounds": rounds,
+            "block_size": block_size
+        }
+        
+    @classmethod
+    def validate_sbox_params(cls, box_size=None):
+        """Validate and adjust S-box parameters to ensure security."""
+        # Use default if not provided
+        box_size = box_size if box_size is not None else cls.DEFAULT_SBOX_SIZE
+        
+        # Enforce minimum value
+        box_size = max(box_size, cls.MIN_SBOX_SIZE)
+        
+        # Power of 2 is often desirable for S-boxes
+        # Find the nearest power of 2 that's >= box_size
+        power = 1
+        while power < box_size:
+            power *= 2
+            
+        return {
+            "box_size": power
         }

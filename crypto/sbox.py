@@ -3,21 +3,23 @@ S-box generation from shared secrets for the Feistel cipher.
 """
 import hashlib
 import struct
+from chebyshev.security import SecurityParams
 
 
 class SBoxGenerator:
     """Generates secure S-boxes from shared secrets."""
 
-    def __init__(self, shared_secret, box_size=256):
+    def __init__(self, shared_secret, box_size=None):
         """
         Initialize with a shared secret to generate S-boxes.
 
         Args:
             shared_secret (int): The shared secret from DH exchange
-            box_size (int): Size of the S-box (default: 256 for byte operations)
+            box_size (int, optional): Size of the S-box, defaults to 256 for byte operations
         """
+        validated_params = SecurityParams.validate_sbox_params(box_size)
+        self.box_size = validated_params["box_size"]
         self.shared_secret = shared_secret
-        self.box_size = box_size
         
     def generate(self):
         """
@@ -100,6 +102,7 @@ class SBoxGenerator:
         return {
             "bijective": is_bijective,
             "fixed_points": fixed_points,
+            "box_size": self.box_size,
             "avalanche_score": avalanche_score,
             "ideal_avalanche": 1/self.box_size,
             "security_score": 1 - (avalanche_score - 1/self.box_size)

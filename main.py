@@ -24,6 +24,12 @@ def run_demo():
     params = SecurityParams.get_secure_params(private_bits)
     ui.show_param_info(params)
 
+    # Get Feistel cipher parameters (rounds and block size)
+    feistel_rounds, feistel_block_size = ui.get_feistel_params()
+
+    # Get S-box size
+    sbox_size = ui.get_sbox_params()
+
     # Get entropy
     entropy = ui.get_entropy()
 
@@ -55,7 +61,7 @@ def run_demo():
 
     # Generate S-box from shared secret
     start_time = time.time()
-    sbox_gen = SBoxGenerator(exchange["alice_shared"])
+    sbox_gen = SBoxGenerator(exchange["alice_shared"], box_size=sbox_size)
     sbox = sbox_gen.generate()
     sbox_time = time.time() - start_time
 
@@ -65,7 +71,11 @@ def run_demo():
 
     # Demo Feistel encryption
     start_time = time.time()
-    cipher = FeistelCipher(sbox, rounds=16)
+    cipher = FeistelCipher(sbox, rounds=feistel_rounds, block_size=feistel_block_size)
+    
+    # Show Feistel cipher parameters
+    cipher_info = cipher.get_cipher_info()
+    ui.show_feistel_params(cipher_info)
 
     # Get sample message
     message = ui.get_sample_message()

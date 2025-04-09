@@ -170,7 +170,10 @@ chebyshev-crypto/
 │   └── tester.py               # Security property testing
 ├── ui/
 │   ├── __init__.py             # UI module exports
-│   └── interface.py            # User interface functions
+│   ├── interface.py            # Main UI coordinator
+│   ├── input_handler.py        # Input handling and validation
+│   ├── display_handler.py      # Information display
+│   └── analysis_display.py     # Analysis and test results display
 ├── main.py                     # Demo entry point
 └── requirements.txt            # Dependencies
 ```

@@ -27,6 +27,9 @@ def run_demo():
         params = SecurityParams.get_secure_params(private_bits)
         ui.show_param_info(params)
 
+        # Get test parameters
+        test_count = ui.get_test_count()
+
         # Get Feistel cipher parameters (rounds and block size)
         feistel_rounds, feistel_block_size = ui.get_feistel_params()
 
@@ -64,11 +67,11 @@ def run_demo():
             tester = SecurityTester(dh)
             a_priv, b_priv = exchange["alice_private"], exchange["bob_private"]
 
-            # Test essential properties
-            semigroup_results = tester.test_semigroup(3, a_priv, b_priv)
+            # Test essential properties with consistent test count
+            semigroup_results = tester.test_semigroup(test_count, a_priv, b_priv)
             ui.show_semigroup_test(semigroup_results)
 
-            commutative_results = tester.test_commutative(3, a_priv, b_priv)
+            commutative_results = tester.test_commutative(test_count, a_priv, b_priv)
             ui.show_commutative_test(commutative_results)
         except Exception as e:
             print(f"\nError testing cryptographic properties: {str(e)}")
@@ -81,8 +84,8 @@ def run_demo():
             sbox = sbox_gen.generate()
             sbox_time = time.time() - start_time
 
-            # Test S-box properties
-            sbox_properties = tester.test_sbox_properties(sbox)
+            # Test S-box properties with consistent test count
+            sbox_properties = tester.test_sbox_properties(sbox, test_samples=test_count)
             ui.show_sbox_info(sbox, sbox_properties, sbox_time)
         except Exception as e:
             print(f"\nError during S-box generation or analysis: {str(e)}")
@@ -104,8 +107,8 @@ def run_demo():
             ciphertext = cipher.encrypt(message.encode())
             decrypted = cipher.decrypt(ciphertext)
             
-            # Test Feistel cipher properties
-            feistel_properties = tester.test_feistel_properties(cipher, iterations=50)
+            # Test Feistel cipher properties with consistent test count
+            feistel_properties = tester.test_feistel_properties(cipher, iterations=test_count)
             
             encryption_time = time.time() - start_time
             ui.show_encryption_results(message, ciphertext, decrypted, encryption_time, feistel_properties)

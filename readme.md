@@ -1,10 +1,10 @@
 # Chebyshev Cryptosystem
 
-A secure key exchange system based on Chebyshev polynomials, offering a quantum-resistant alternative to traditional Diffie-Hellman.
+A secure key exchange system based on Chebyshev polynomials, offering a quantum-resistant alternative to traditional Diffie-Hellman, with additional Feistel cipher functionality using dynamically generated S-boxes.
 
 ## Overview
 
-This cryptosystem implements a key exchange protocol using the semigroup property of Chebyshev polynomials over a prime field. It provides security parameters that scale appropriately with key size and includes comprehensive testing for the mathematical properties that ensure the security of the system.
+This cryptosystem implements a key exchange protocol using the semigroup property of Chebyshev polynomials over a prime field. It provides security parameters that scale appropriately with key size and includes comprehensive testing for the mathematical properties that ensure the security of the system. The system also includes a Feistel cipher implementation that uses S-boxes dynamically generated from the shared secret.
 
 ### Features
 
@@ -13,6 +13,9 @@ This cryptosystem implements a key exchange protocol using the semigroup propert
 - **Mathematical Verification**: Tests semigroup and commutativity properties critical to security
 - **User-Friendly Interface**: Simple command-line interface for demonstrations and testing
 - **Modular Architecture**: Clean separation of concerns for maintainability and reusability
+- **Feistel Cipher**: Implementation of the Feistel structure for symmetric encryption
+- **Dynamic S-boxes**: S-boxes generated from the shared secret for enhanced security
+- **Complete Encryption Pipeline**: Key exchange followed by symmetric encryption
 
 ## Installation
 
@@ -39,7 +42,7 @@ This cryptosystem implements a key exchange protocol using the semigroup propert
 
 ### Basic Demo
 
-Run the demonstration script to generate keys, perform a key exchange, and verify security properties:
+Run the demonstration script to generate keys, perform a key exchange, verify security properties, and demonstrate the Feistel cipher:
 
 ```
 python main.py
@@ -50,7 +53,9 @@ python main.py
 You can import the components and use them in your own applications:
 
 ```python
-from chebyshev_cryptosystem import ChebyshevDH
+from claude_prj1 import ChebyshevDH
+from crypto.feistel import FeistelCipher
+from crypto.sbox import SBoxGenerator
 
 # Initialize with 32-bit private keys
 dh = ChebyshevDH(private_bits=32)
@@ -69,6 +74,21 @@ bob_shared = dh.compute_shared(bob_private, alice_raw)
 
 # Verify that both parties have the same secret
 assert alice_shared == bob_shared
+
+# Create S-box from shared secret
+sbox_gen = SBoxGenerator(alice_shared)
+sbox = sbox_gen.generate()
+
+# Initialize Feistel cipher with the S-box
+cipher = FeistelCipher(sbox, rounds=16)
+
+# Encrypt a message
+plaintext = b"This is a secret message"
+ciphertext = cipher.encrypt(plaintext)
+
+# Decrypt the message
+decrypted = cipher.decrypt(ciphertext)
+assert decrypted == plaintext
 ```
 
 ## Mathematical Background
@@ -90,6 +110,14 @@ When computed over a prime field (modulo a large prime p), they exhibit useful p
 
 These properties allow for secure key exchange similar to the Diffie-Hellman protocol, but based on the difficulty of the Chebyshev polynomial discrete logarithm problem, which is believed to be resistant to quantum attacks.
 
+### Feistel Network
+
+The Feistel network is a symmetric structure used in block ciphers. It consists of multiple rounds where the block is divided into two parts, and one part is transformed using a round function that depends on the other part and a subkey. The Feistel structure has the advantage that encryption and decryption operations are very similar, even identical in some cases, requiring only a reversal of the key schedule.
+
+### S-boxes
+
+Substitution boxes (S-boxes) are a basic component of symmetric key algorithms which perform substitution. In our implementation, S-boxes are dynamically generated from the shared secret, providing a unique transformation for each key exchange session.
+
 ## Project Structure
 
 ```
@@ -102,6 +130,8 @@ claude_prj1/
 ├── crypto/
 │   ├── __init__.py             # Crypto module exports
 │   ├── dh.py                   # Diffie-Hellman implementation
+│   ├── feistel.py              # Feistel cipher implementation
+│   ├── sbox.py                 # S-box generation from shared secret
 │   └── tester.py               # Security property testing
 ├── ui/
 │   ├── __init__.py             # UI module exports
@@ -116,6 +146,8 @@ claude_prj1/
 - Key sizes are automatically scaled to maintain appropriate security levels
 - For production use, consider using longer key lengths (64-bit private keys or larger)
 - The system enforces minimum key sizes to prevent insecure configurations
+- The Feistel cipher implementation uses dynamically generated S-boxes from the shared secret, enhancing security
+- The number of Feistel rounds can be adjusted to balance security and performance
 
 ## Performance
 
@@ -125,6 +157,8 @@ The implementation uses several optimizations for Chebyshev polynomial evaluatio
 - **NumPy coefficient calculation** for medium-sized degrees
 - **Memoized recursive calculation** for smaller degrees
 - **Binary exponentiation** for efficient computation
+
+The Feistel cipher implementation is also optimized for performance while maintaining a high level of security.
 
 ## Contributing
 
@@ -144,3 +178,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Based on research into Chebyshev polynomials as a post-quantum cryptographic primitive
 - Inspired by the need for alternatives to discrete logarithm-based cryptosystems that are vulnerable to quantum algorithms
+- Feistel network design inspired by classic symmetric ciphers like DES and Blowfish

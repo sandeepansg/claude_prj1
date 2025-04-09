@@ -1,6 +1,7 @@
 """
 User interface for the Chebyshev cryptosystem.
 """
+import base64
 from chebyshev.security import SecurityParams
 
 
@@ -29,10 +30,17 @@ class UserInterface:
         return input("Enter text for additional entropy (optional): ")
 
     @staticmethod
+    def get_sample_message():
+        """Get a sample message to encrypt."""
+        default_message = "This is a secure message exchanged using Chebyshev polynomials!"
+        message = input(f"Enter a message to encrypt [default: '{default_message}']: ")
+        return message.strip() if message.strip() else default_message
+
+    @staticmethod
     def show_header():
         """Display the application header."""
         print("=" * 80)
-        print("Secure Chebyshev Polynomial Diffie-Hellman Key Exchange")
+        print("Secure Chebyshev Polynomial Diffie-Hellman Key Exchange with Feistel Cipher")
         print("=" * 80)
         print("All security parameters will be automatically determined based on private key length")
         print(f"Default private key length: {SecurityParams.DEFAULT_PRIVATE_BITS} bits")
@@ -113,12 +121,4 @@ class UserInterface:
             print(f"  Input value x (hex) = 0x{r['x']:X}")
             print(f"  T_r(x) (hex) = 0x{r['t_r_x']:X}")
             print(f"  T_s(x) (hex) = 0x{r['t_s_x']:X}")
-            print(f"  T_r(T_s(x)) (hex) = 0x{r['t_r_t_s_x']:X}")
-            print(f"  T_s(T_r(x)) (hex) = 0x{r['t_s_t_r_x']:X}")
-            print(f"  Result: {'✓ Verified' if r['verified'] else '✗ Failed'}")
-            print()
-
-        print(f"Commutativity property: {'✓ VERIFIED' if success else '✗ FAILED'} for all tests")
-        if success:
-            print("The commutativity property T_r(T_s(x)) = T_s(T_r(x)) holds, which enables")
-            print("both parties to derive the same shared secret independently.")
+            print(f"  T_r(T_s(x)) (hex) = 0x{r['t_r_t_s_

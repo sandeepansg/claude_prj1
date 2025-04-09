@@ -5,6 +5,8 @@ import time
 from chebyshev.security import SecurityParams
 from crypto.dh import ChebyshevDH
 from crypto.tester import SecurityTester
+from crypto.feistel import FeistelCipher
+from crypto.sbox import SBoxGenerator
 from ui.interface import UserInterface
 
 
@@ -50,6 +52,30 @@ def run_demo():
 
     commutative_results = tester.test_commutative(3, a_priv, b_priv)
     ui.show_commutative_test(commutative_results)
+
+    # Generate S-box from shared secret
+    start_time = time.time()
+    sbox_gen = SBoxGenerator(exchange["alice_shared"])
+    sbox = sbox_gen.generate()
+    sbox_time = time.time() - start_time
+
+    # Test S-box properties
+    sbox_properties = sbox_gen.test_properties(sbox)
+    ui.show_sbox_info(sbox, sbox_properties, sbox_time)
+
+    # Demo Feistel encryption
+    start_time = time.time()
+    cipher = FeistelCipher(sbox, rounds=16)
+
+    # Get sample message
+    message = ui.get_sample_message()
+
+    # Encrypt and decrypt
+    ciphertext = cipher.encrypt(message.encode())
+    decrypted = cipher.decrypt(ciphertext)
+
+    encryption_time = time.time() - start_time
+    ui.show_encryption_results(message, ciphertext, decrypted.decode(), encryption_time)
 
 
 if __name__ == "__main__":

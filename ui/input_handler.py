@@ -47,16 +47,20 @@ class InputHandler:
                 
         # Get block size
         while True:
-            block_input = input(f"Enter block size in bytes [default={SecurityParams.DEFAULT_BLOCK_SIZE}]: ")
+            block_input = input(f"Enter block size in bytes [default={SecurityParams.DEFAULT_BLOCK_SIZE}, max={SecurityParams.MAX_BLOCK_SIZE}]: ")
             if not block_input.strip():
                 block_size = None  # Use default
                 break
                 
             try:
                 block_size = int(block_input)
-                if block_size >= SecurityParams.MIN_BLOCK_SIZE:
-                    break
-                print(f"Error: Block size must be at least {SecurityParams.MIN_BLOCK_SIZE} bytes for security")
+                if block_size < SecurityParams.MIN_BLOCK_SIZE:
+                    print(f"Error: Block size must be at least {SecurityParams.MIN_BLOCK_SIZE} bytes for security")
+                    continue
+                elif block_size > SecurityParams.MAX_BLOCK_SIZE:
+                    print(f"Error: Block size must be at most {SecurityParams.MAX_BLOCK_SIZE} bytes for performance")
+                    continue
+                break
             except ValueError:
                 print("Please enter a valid number")
                 
@@ -69,15 +73,19 @@ class InputHandler:
         print("-" * 30)
         
         while True:
-            size_input = input(f"Enter S-box size [default={SecurityParams.DEFAULT_SBOX_SIZE}]: ")
+            size_input = input(f"Enter S-box size [default={SecurityParams.DEFAULT_SBOX_SIZE}, max={SecurityParams.MAX_SBOX_SIZE}]: ")
             if not size_input.strip():
                 return None  # Use default
                 
             try:
                 box_size = int(size_input)
-                if box_size >= SecurityParams.MIN_SBOX_SIZE:
-                    return box_size
-                print(f"Error: S-box size must be at least {SecurityParams.MIN_SBOX_SIZE} for security")
+                if box_size < SecurityParams.MIN_SBOX_SIZE:
+                    print(f"Error: S-box size must be at least {SecurityParams.MIN_SBOX_SIZE} for security")
+                    continue
+                elif box_size > SecurityParams.MAX_SBOX_SIZE:
+                    print(f"Error: S-box size must be at most {SecurityParams.MAX_SBOX_SIZE} for performance")
+                    continue
+                return box_size
             except ValueError:
                 print("Please enter a valid number")
 

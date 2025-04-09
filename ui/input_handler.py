@@ -7,6 +7,11 @@ from chebyshev.security import SecurityParams
 
 class InputHandler:
     """Handles user inputs and validation."""
+    
+    # Default test count for consistency
+    DEFAULT_TEST_COUNT = 5
+    MIN_TEST_COUNT = 3
+    MAX_TEST_COUNT = 50
 
     @staticmethod
     def get_private_key_length():
@@ -17,7 +22,7 @@ class InputHandler:
         while attempts < max_attempts:
             private_input = input(f"Enter private key length in bits [default={SecurityParams.DEFAULT_PRIVATE_BITS}]: ")
             if not private_input.strip():
-                return SecurityParams.DEFAULT_PRIVATE_BITS  # Return the default value, not None
+                return SecurityParams.DEFAULT_PRIVATE_BITS  # Return the default value
 
             try:
                 private_bits = int(private_input)
@@ -33,7 +38,33 @@ class InputHandler:
             attempts += 1
 
         print(f"Using default value of {SecurityParams.DEFAULT_PRIVATE_BITS} after {max_attempts} invalid attempts")
-        return SecurityParams.DEFAULT_PRIVATE_BITS  # Return the default value, not None
+        return SecurityParams.DEFAULT_PRIVATE_BITS
+
+    @staticmethod
+    def get_test_count():
+        """Get consistent test count for all security property tests."""
+        print("\nTest Configuration")
+        print("-" * 30)
+        
+        test_count = InputHandler.DEFAULT_TEST_COUNT  # Set default first
+        while True:
+            count_input = input(f"Enter number of tests to run [default={InputHandler.DEFAULT_TEST_COUNT}, min={InputHandler.MIN_TEST_COUNT}, max={InputHandler.MAX_TEST_COUNT}]: ")
+            if not count_input.strip():
+                break  # Use default already set
+                
+            try:
+                test_count = int(count_input)
+                if test_count < InputHandler.MIN_TEST_COUNT:
+                    print(f"Error: Number of tests must be at least {InputHandler.MIN_TEST_COUNT}")
+                    continue
+                elif test_count > InputHandler.MAX_TEST_COUNT:
+                    print(f"Error: Number of tests must be at most {InputHandler.MAX_TEST_COUNT} for performance")
+                    continue
+                break
+            except ValueError:
+                print("Please enter a valid number")
+                
+        return test_count
 
     @staticmethod
     def get_feistel_params():

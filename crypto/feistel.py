@@ -43,7 +43,10 @@ class FeistelCipher:
         
         self.sbox = sbox
         self.sbox_size = len(sbox)
-        self.sbox_mask = self.sbox_size - 1  # Fast modulo for powers of 2
+        
+        # Determine if sbox_size is a power of 2 for fast modulo
+        self.is_power_of_two = (self.sbox_size & (self.sbox_size - 1)) == 0
+        self.sbox_mask = self.sbox_size - 1 if self.is_power_of_two else None
         
         # Create inverse S-box for decryption
         self.inverse_sbox = [0] * self.sbox_size
@@ -178,9 +181,15 @@ class FeistelCipher:
             result[i] = half_block[i] ^ subkey[i % len(subkey)]
             
         # Apply S-box substitution with proper modulo operations
-        # Using the sbox_mask (2^n - 1) for fast modulo when sbox size is a power of 2
         for i in range(len(result)):
-            index = result[i] & self.sbox_mask  # Fast modulo for power of 2
+            # Use different approaches based on whether sbox_size is a power of 2
+            if self.is_power_of_two:
+                # Fast modulo for power of 2
+                index = result[i] & self.sbox_mask
+            else:
+                # Standard modulo for non-power of 2
+                index = result[i] % self.sbox_size
+                
             result[i] = self.sbox[index] & 0xFF  # Ensure output is a valid byte
             
         # Efficient diffusion function for large blocks

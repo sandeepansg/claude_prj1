@@ -21,6 +21,7 @@ class SecurityParams:
     DEFAULT_FEISTEL_ROUNDS = 16
     MIN_BLOCK_SIZE = 8
     DEFAULT_BLOCK_SIZE = 8
+    MAX_BLOCK_SIZE = 1024  # Add maximum block size to prevent performance issues
     
     # S-box security constants
     MIN_SBOX_SIZE = 16
@@ -59,9 +60,10 @@ class SecurityParams:
         rounds = rounds if rounds is not None else cls.DEFAULT_FEISTEL_ROUNDS
         block_size = block_size if block_size is not None else cls.DEFAULT_BLOCK_SIZE
         
-        # Enforce minimum values
+        # Enforce minimum and maximum values
         rounds = max(rounds, cls.MIN_FEISTEL_ROUNDS)
         block_size = max(block_size, cls.MIN_BLOCK_SIZE)
+        block_size = min(block_size, cls.MAX_BLOCK_SIZE)
         
         # Ensure block_size is even for Feistel structure
         if block_size % 2 != 0:

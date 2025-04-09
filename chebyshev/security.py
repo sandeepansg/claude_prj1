@@ -23,8 +23,9 @@ class SecurityParams:
     DEFAULT_BLOCK_SIZE = 8
     
     # S-box security constants
-    MIN_SBOX_SIZE = 256
+    MIN_SBOX_SIZE = 16
     DEFAULT_SBOX_SIZE = 256
+    MAX_SBOX_SIZE = 65536  # Add maximum size to prevent performance issues
 
     @classmethod
     def get_secure_params(cls, private_bits=None):
@@ -77,10 +78,10 @@ class SecurityParams:
         # Use default if not provided
         box_size = box_size if box_size is not None else cls.DEFAULT_SBOX_SIZE
         
-        # Enforce minimum value
+        # Enforce minimum and maximum values
         box_size = max(box_size, cls.MIN_SBOX_SIZE)
+        box_size = min(box_size, cls.MAX_SBOX_SIZE)
         
-        # Power of 2 is often desirable for S-boxes
         # Find the nearest power of 2 that's >= box_size
         power = 1
         while power < box_size:
@@ -89,3 +90,10 @@ class SecurityParams:
         return {
             "box_size": power
         }
+        
+    @classmethod
+    def is_power_of_two(cls, n):
+        """Check if a number is a power of 2."""
+        if n <= 0:
+            return False
+        return (n & (n - 1)) == 0

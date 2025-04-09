@@ -15,14 +15,18 @@ class AnalysisDisplay:
         print("Semigroup Property Verification: T_r(T_s(x)) = T_{r*s}(x) mod q")
         print("-" * 80)
 
-        success = all(r['verified'] for r in results)
+        if not results:
+            print("No semigroup test results available.")
+            return
+
+        success = all(r.get('verified', False) for r in results)
         for r in results:
             print(f"Test {r['test']}:")
             print(f"  Input value x (hex) = 0x{r['x']:X}")
             print(f"  T_s(x) (hex) = 0x{r['t_s_x']:X}")
             print(f"  T_r(T_s(x)) (hex) = 0x{r['t_r_t_s_x']:X}")
             print(f"  T_rs(x) (hex) = 0x{r['t_rs_x']:X}")
-            print(f"  Result: {'✓ Verified' if r['verified'] else '✗ Failed'}")
+            print(f"  Result: {'✓ Verified' if r.get('verified', False) else '✗ Failed'}")
             print()
 
         print(f"Semigroup property: {'✓ VERIFIED' if success else '✗ FAILED'} for all tests")
@@ -37,7 +41,11 @@ class AnalysisDisplay:
         print("Commutativity Property Verification: T_r(T_s(x)) = T_s(T_r(x)) mod q")
         print("-" * 80)
 
-        success = all(r['verified'] for r in results)
+        if not results:
+            print("No commutativity test results available.")
+            return
+
+        success = all(r.get('verified', False) for r in results)
         for r in results:
             print(f"Test {r['test']}:")
             print(f"  Input value x (hex) = 0x{r['x']:X}")
@@ -45,7 +53,7 @@ class AnalysisDisplay:
             print(f"  T_s(x) (hex) = 0x{r['t_s_x']:X}")
             print(f"  T_r(T_s(x)) (hex) = 0x{r['t_r_t_s_x']:X}")
             print(f"  T_s(T_r(x)) (hex) = 0x{r['t_s_t_r_x']:X}")
-            print(f"  Result: {'✓ Verified' if r['verified'] else '✗ Failed'}")
+            print(f"  Result: {'✓ Verified' if r.get('verified', False) else '✗ Failed'}")
             print()
 
         print(f"Commutativity property: {'✓ VERIFIED' if success else '✗ FAILED'} for all tests")
@@ -60,7 +68,13 @@ class AnalysisDisplay:
         print("S-box Generation and Analysis")
         print("-" * 80)
         print(f"S-box generated in {time_taken:.4f} seconds")
-        print(f"S-box size: {properties['box_size']} entries")
+        
+        # Handle case where properties or sbox might be None
+        if not sbox or not properties:
+            print("Error: S-box generation failed or produced invalid results.")
+            return
+            
+        print(f"S-box size: {properties.get('box_size', len(sbox))} entries")
         
         # Show a sample of the S-box (first 16 entries)
         print("\nSample of S-box entries (first 16):")
@@ -72,19 +86,29 @@ class AnalysisDisplay:
         
         # Show S-box properties
         print("\nS-box Cryptographic Properties:")
-        print(f"- Bijective (one-to-one mapping): {'Yes' if properties['bijective'] else 'No'}")
-        print(f"- Fixed points: {properties['fixed_points']} out of {len(sbox)}")
-        print(f"- Avalanche characteristic: {properties['avalanche_score']:.6f} "
-              f"(ideal: {properties['ideal_avalanche']:.6f})")
-        print(f"- Security score: {properties['security_score']:.4f} (higher is better)")
+        print(f"- Bijective (one-to-one mapping): {'Yes' if properties.get('bijective', False) else 'No'}")
+        print(f"- Fixed points: {properties.get('fixed_points', 'N/A')} out of {len(sbox)}")
+        
+        # Handle potentially missing avalanche properties
+        avalanche_score = properties.get('avalanche_score', None)
+        ideal_avalanche = properties.get('ideal_avalanche', None)
+        if avalanche_score is not None and ideal_avalanche is not None:
+            print(f"- Avalanche characteristic: {avalanche_score:.6f} "
+                f"(ideal: {ideal_avalanche:.6f})")
+        else:
+            print("- Avalanche characteristic: Not evaluated")
+        
+        # Security score
+        security_score = properties.get('security_score', 0)
+        print(f"- Security score: {security_score:.4f} (higher is better)")
         
         # Evaluate S-box quality
         quality = "Excellent"
-        if properties['security_score'] < 0.8:
+        if security_score < 0.8:
             quality = "Good"
-        if properties['security_score'] < 0.5:
+        if security_score < 0.5:
             quality = "Fair"
-        if properties['security_score'] < 0.3:
+        if security_score < 0.3:
             quality = "Poor"
             
         print(f"- Overall quality: {quality}")
@@ -107,29 +131,70 @@ class AnalysisDisplay:
         print("-" * 80)
         print(f"Encryption/decryption completed in {time_taken:.4f} seconds")
         
+        if ciphertext is None or decrypted is None:
+            print("Error: Encryption or decryption process failed")
+            return
+        
         # Show the plaintext
         print(f"\nOriginal message: '{plaintext}'")
         
         # Show a preview of the ciphertext (base64 encoded)
-        ciphertext_b64 = base64.b64encode(ciphertext).decode('ascii')
-        preview_length = min(64, len(ciphertext_b64))
-        print(f"Ciphertext (Base64, first {preview_length} chars): {ciphertext_b64[:preview_length]}")
+        try:
+            ciphertext_b64 = base64.b64encode(ciphertext).decode('ascii')
+            preview_length = min(64, len(ciphertext_b64))
+            print(f"Ciphertext (Base64, first {preview_length} chars): {ciphertext_b64[:preview_length]}")
+        except Exception as e:
+            print(f"Error encoding ciphertext to Base64: {str(e)}")
+            print(f"Raw ciphertext length: {len(ciphertext)} bytes")
         
         # Show the decrypted text
-        print(f"Decrypted message: '{decrypted}'")
+        try:
+            decoded_msg = decrypted if isinstance(decrypted, str) else decrypted.decode()
+            print(f"Decrypted message: '{decoded_msg}'")
+            
+            # Show verification result
+            success = plaintext == decoded_msg
+            print(f"\nDecryption verification: {'✓ SUCCESS' if success else '✗ FAILED'}")
+        except Exception as e:
+            print(f"Error displaying decrypted text: {str(e)}")
+            print("Decryption verification: ✗ FAILED")
+            success = False
         
-        # Show verification result
-        success = plaintext == decrypted
-        print(f"\nDecryption verification: {'✓ SUCCESS' if success else '✗ FAILED'}")
-        
-        # Display Feistel cipher security properties
-        print("\nFeistel Cipher Security Analysis:")
-        print(f"- Invertibility: {feistel_properties['invertibility']['success_rate']:.4f} "
-              f"(avg time: {feistel_properties['invertibility']['avg_time']:.6f}s)")
-        print(f"- Avalanche effect: {feistel_properties['avalanche']['average']:.4f} "
-              f"(ideal: {feistel_properties['avalanche']['ideal']:.4f})")
-        print(f"- Statistical randomness: {feistel_properties['randomness']['bit_balance']:.4f}")
-        print(f"- Overall security score: {feistel_properties['overall_score']:.4f}")
+        # Display Feistel cipher security properties if available
+        if feistel_properties:
+            print("\nFeistel Cipher Security Analysis:")
+            
+            # Handle invertibility properties
+            if 'invertibility' in feistel_properties:
+                inv = feistel_properties['invertibility']
+                print(f"- Invertibility: {inv.get('success_rate', 'N/A'):.4f} "
+                    f"(avg time: {inv.get('avg_time', 'N/A'):.6f}s)")
+            else:
+                print("- Invertibility: Not evaluated")
+                
+            # Handle avalanche properties
+            if 'avalanche' in feistel_properties:
+                ava = feistel_properties['avalanche']
+                print(f"- Avalanche effect: {ava.get('average', 'N/A'):.4f} "
+                    f"(ideal: {ava.get('ideal', 'N/A'):.4f})")
+            else:
+                print("- Avalanche effect: Not evaluated")
+                
+            # Handle randomness properties
+            if 'randomness' in feistel_properties:
+                rand = feistel_properties['randomness']
+                print(f"- Statistical randomness: {rand.get('bit_balance', 'N/A'):.4f}")
+            else:
+                print("- Statistical randomness: Not evaluated")
+            
+            # Overall score
+            overall = feistel_properties.get('overall_score', 'N/A')
+            if isinstance(overall, (int, float)):
+                print(f"- Overall security score: {overall:.4f}")
+            else:
+                print(f"- Overall security score: {overall}")
+        else:
+            print("\nFeistel Cipher Security Analysis: Not available")
         
         if success:
             print("\nThe message was successfully encrypted and decrypted, demonstrating")

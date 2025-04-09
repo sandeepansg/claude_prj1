@@ -17,13 +17,13 @@ class InputHandler:
         while attempts < max_attempts:
             private_input = input(f"Enter private key length in bits [default={SecurityParams.DEFAULT_PRIVATE_BITS}]: ")
             if not private_input.strip():
-                return None  # Use default
+                return SecurityParams.DEFAULT_PRIVATE_BITS  # Return the default value, not None
 
             try:
                 private_bits = int(private_input)
                 if private_bits < SecurityParams.MIN_PRIVATE_BITS:
                     print(f"Error: Private key must be at least {SecurityParams.MIN_PRIVATE_BITS} bits for security")
-                elif private_bits > SecurityParams.MAX_PRIVATE_BITS:  # Add this check
+                elif private_bits > SecurityParams.MAX_PRIVATE_BITS:
                     print(f"Error: Private key cannot exceed {SecurityParams.MAX_PRIVATE_BITS} bits for performance")
                 else:
                     return private_bits
@@ -33,7 +33,7 @@ class InputHandler:
             attempts += 1
 
         print(f"Using default value of {SecurityParams.DEFAULT_PRIVATE_BITS} after {max_attempts} invalid attempts")
-        return None  # Use default after max attempts
+        return SecurityParams.DEFAULT_PRIVATE_BITS  # Return the default value, not None
 
     @staticmethod
     def get_feistel_params():
@@ -42,11 +42,11 @@ class InputHandler:
         print("-" * 30)
         
         # Get rounds
+        rounds = SecurityParams.DEFAULT_FEISTEL_ROUNDS  # Set default first
         while True:
             rounds_input = input(f"Enter number of Feistel rounds [default={SecurityParams.DEFAULT_FEISTEL_ROUNDS}]: ")
             if not rounds_input.strip():
-                rounds = None  # Use default
-                break
+                break  # Use default already set
                 
             try:
                 rounds = int(rounds_input)
@@ -57,11 +57,11 @@ class InputHandler:
                 print("Please enter a valid number")
                 
         # Get block size
+        block_size = SecurityParams.DEFAULT_BLOCK_SIZE  # Set default first
         while True:
             block_input = input(f"Enter block size in bytes [default={SecurityParams.DEFAULT_BLOCK_SIZE}, max={SecurityParams.MAX_BLOCK_SIZE}]: ")
             if not block_input.strip():
-                block_size = None  # Use default
-                break
+                break  # Use default already set
                 
             try:
                 block_size = int(block_input)
@@ -83,10 +83,11 @@ class InputHandler:
         print("\nS-Box Configuration")
         print("-" * 30)
         
+        box_size = SecurityParams.DEFAULT_SBOX_SIZE  # Set default first
         while True:
             size_input = input(f"Enter S-box size [default={SecurityParams.DEFAULT_SBOX_SIZE}, max={SecurityParams.MAX_SBOX_SIZE}]: ")
             if not size_input.strip():
-                return None  # Use default
+                return box_size  # Return default already set
                 
             try:
                 box_size = int(size_input)

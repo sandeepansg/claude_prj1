@@ -8,32 +8,32 @@ from chebyshev.security import SecurityParams
 class InputHandler:
     """Handles user inputs and validation."""
 
-@staticmethod
-def get_private_key_length():
-    """Get private key length from user input."""
-    attempts = 0
-    max_attempts = 3
-    
-    while attempts < max_attempts:
-        private_input = input(f"Enter private key length in bits [default={SecurityParams.DEFAULT_PRIVATE_BITS}]: ")
-        if not private_input.strip():
-            return None  # Use default
-            
-        try:
-            private_bits = int(private_input)
-            if private_bits < SecurityParams.MIN_PRIVATE_BITS:
-                print(f"Error: Private key must be at least {SecurityParams.MIN_PRIVATE_BITS} bits for security")
-            elif private_bits > SecurityParams.MAX_PRIVATE_BITS:  # Add this check
-                print(f"Error: Private key cannot exceed {SecurityParams.MAX_PRIVATE_BITS} bits for performance")
-            else:
-                return private_bits
-        except ValueError:
-            print("Please enter a valid number")
-            
-        attempts += 1
-        
-    print(f"Using default value of {SecurityParams.DEFAULT_PRIVATE_BITS} after {max_attempts} invalid attempts")
-    return None  # Use default after max attempts
+    @staticmethod
+    def get_private_key_length():
+        """Get private key length from user input."""
+        attempts = 0
+        max_attempts = 3
+
+        while attempts < max_attempts:
+            private_input = input(f"Enter private key length in bits [default={SecurityParams.DEFAULT_PRIVATE_BITS}]: ")
+            if not private_input.strip():
+                return None  # Use default
+
+            try:
+                private_bits = int(private_input)
+                if private_bits < SecurityParams.MIN_PRIVATE_BITS:
+                    print(f"Error: Private key must be at least {SecurityParams.MIN_PRIVATE_BITS} bits for security")
+                elif private_bits > SecurityParams.MAX_PRIVATE_BITS:  # Add this check
+                    print(f"Error: Private key cannot exceed {SecurityParams.MAX_PRIVATE_BITS} bits for performance")
+                else:
+                    return private_bits
+            except ValueError:
+                print("Please enter a valid number")
+
+            attempts += 1
+
+        print(f"Using default value of {SecurityParams.DEFAULT_PRIVATE_BITS} after {max_attempts} invalid attempts")
+        return None  # Use default after max attempts
 
     @staticmethod
     def get_feistel_params():

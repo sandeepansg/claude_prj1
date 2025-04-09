@@ -11,22 +11,22 @@ class SBoxGenerator:
     """Generates secure S-boxes from shared secrets."""
 
     def __init__(self, shared_secret, box_size=None):
-    """Initialize with a shared secret to generate S-boxes."""
-    # Type checking
-    if not isinstance(shared_secret, int):
-        raise TypeError("shared_secret must be an integer")
-    
-    if shared_secret <= 0:
-        raise ValueError("shared_secret must be a positive integer")
-        
-    # Check if shared_secret is too large to convert to bytes safely
-    max_bytes = (shared_secret.bit_length() + 7) // 8
-    if max_bytes > 10000:  # Arbitrary limit to prevent memory issues
-        raise ValueError("shared_secret is too large for secure conversion")
-        
-    validated_params = SecurityParams.validate_sbox_params(box_size)
-    self.box_size = validated_params["box_size"]
-    self.shared_secret = shared_secret
+        """Initialize with a shared secret to generate S-boxes."""
+        # Type checking
+        if not isinstance(shared_secret, int):
+            raise TypeError("shared_secret must be an integer")
+
+        if shared_secret <= 0:
+            raise ValueError("shared_secret must be a positive integer")
+
+        # Check if shared_secret is too large to convert to bytes safely
+        max_bytes = (shared_secret.bit_length() + 7) // 8
+        if max_bytes > 10000:  # Arbitrary limit to prevent memory issues
+            raise ValueError("shared_secret is too large for secure conversion")
+
+        validated_params = SecurityParams.validate_sbox_params(box_size)
+        self.box_size = validated_params["box_size"]
+        self.shared_secret = shared_secret
         
     def generate(self):
         """

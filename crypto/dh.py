@@ -11,59 +11,58 @@ from chebyshev.security import SecurityParams
 class ChebyshevDH:
     """Diffie-Hellman key exchange using Chebyshev polynomials."""
 
-    def __init__(self, sbox: List[int], rounds: Optional[int] = None, block_size: Optional[int] = None):
-    """Initialize the Feistel cipher."""
-    # Validate sbox type and contents
-    if not isinstance(sbox, list):
-        raise TypeError("S-box must be a list")
-    
-    if not sbox or not all(isinstance(x, int) for x in sbox):
-        raise ValueError("S-box must be a non-empty list of integers")
-    
-    # Check sbox size is a power of 2 for efficient modulo operations
-    sbox_size = len(sbox)
-    if not SecurityParams.is_power_of_two(sbox_size):
-        raise ValueError("S-box size must be a power of 2 for security and performance")
-        
-    # Validate values in the S-box (should be in range)
-    if max(sbox) >= sbox_size or min(sbox) < 0:
-        raise ValueError(f"S-box entries must be between 0 and {sbox_size-1}")
+    def __init__(self, private_bits=None):
+        # Calculate all parameters based on private key size
+        params = SecurityParams.get_secure_params(private_bits)
+        self.private_bits = params["private_bits"]
+        prime_bits = params["prime_bits"]
+        self.public_bits = params["public_bits"]
+        param_bits = params["param_bits"]
+
+        # Generate prime modulus
+        self.mod = sympy.randprime(2 ** (prime_bits - 1), 2 ** prime_bits)
+
+        # Create Chebyshev polynomial calculator
+        self.cheby = ChebyshevPoly(self.mod)
+
+        # Generate public parameter exactly one bit less than prime
+        self.param = random.randint(2 ** (param_bits - 1), 2 ** param_bits - 1)
 
     def generate_keypair(self, entropy=None):
-    """Generate a private and public key pair."""
-    # Sanitize entropy input
-    if entropy is not None:
-        if not isinstance(entropy, (str, bytes)):
-            raise TypeError("Entropy must be a string or bytes")
-        # Limit entropy length to prevent DoS
-        entropy = str(entropy)[:1024]
-        random.seed(hash(f"{entropy}{time.time()}"))
+        """Generate a private and public key pair."""
+        # Sanitize entropy input
+        if entropy is not None:
+            if not isinstance(entropy, (str, bytes)):
+                raise TypeError("Entropy must be a string or bytes")
+            # Limit entropy length to prevent DoS
+            entropy = str(entropy)[:1024]
+            random.seed(hash(f"{entropy}{time.time()}"))
 
-        # Generate private key of appropriate length
-        private_min = 2 ** (self.private_bits - 1)
-        private_max = 2 ** self.private_bits - 1
-        private = random.randint(private_min, private_max)
+            # Generate private key of appropriate length
+            private_min = 2 ** (self.private_bits - 1)
+            private_max = 2 ** self.private_bits - 1
+            private = random.randint(private_min, private_max)
 
-        # Calculate raw public key
-        raw_public = self.cheby.eval(private, self.param)
+            # Calculate raw public key
+            raw_public = self.cheby.eval(private, self.param)
 
-        # Format public key to specified bit length
-        mask = (1 << self.public_bits) - 1
-        public = (raw_public & mask) | (1 << (self.public_bits - 1))
-        public %= self.mod
+            # Format public key to specified bit length
+            mask = (1 << self.public_bits) - 1
+            public = (raw_public & mask) | (1 << (self.public_bits - 1))
+            public %= self.mod
 
-        return private, public, raw_public
+            return private, public, raw_public
 
     def compute_shared(self, private, other_public):
-    """Compute shared secret using DH principle."""
-    # Validate inputs
-    if not isinstance(private, int) or private <= 0 or private >= self.mod:
-        raise ValueError(f"Private key must be an integer between 1 and {self.mod-1}")
-    
-    if not isinstance(other_public, int) or other_public <= 0 or other_public >= self.mod:
-        raise ValueError(f"Public key must be an integer between 1 and {self.mod-1}")
-        
-    return self.cheby.eval(private, other_public)
+        """Compute shared secret using DH principle."""
+        # Validate inputs
+        if not isinstance(private, int) or private <= 0 or private >= self.mod:
+            raise ValueError(f"Private key must be an integer between 1 and {self.mod-1}")
+
+        if not isinstance(other_public, int) or other_public <= 0 or other_public >= self.mod:
+            raise ValueError(f"Public key must be an integer between 1 and {self.mod-1}")
+
+        return self.cheby.eval(private, other_public)
 
     def simulate_exchange(self, alice_entropy=None, bob_entropy=None):
         """Simulate complete key exchange between two parties."""

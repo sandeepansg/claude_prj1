@@ -66,7 +66,7 @@ def run_demo():
     sbox_time = time.time() - start_time
 
     # Test S-box properties
-    sbox_properties = sbox_gen.test_properties(sbox)
+    sbox_properties = tester.test_sbox_properties(sbox)
     ui.show_sbox_info(sbox, sbox_properties, sbox_time)
 
     # Demo Feistel encryption
@@ -83,9 +83,12 @@ def run_demo():
     # Encrypt and decrypt
     ciphertext = cipher.encrypt(message.encode())
     decrypted = cipher.decrypt(ciphertext)
-
+    
+    # Test Feistel cipher properties
+    feistel_properties = tester.test_feistel_properties(cipher, iterations=50)
+    
     encryption_time = time.time() - start_time
-    ui.show_encryption_results(message, ciphertext, decrypted.decode(), encryption_time)
+    ui.show_encryption_results(message, ciphertext, decrypted.decode(), encryption_time, feistel_properties)
 
 
 if __name__ == "__main__":

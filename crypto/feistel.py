@@ -28,7 +28,11 @@ class FeistelCipher:
         self.half_block_size = self.block_size // 2
         
         self.sbox = sbox
-        self.inverse_sbox = [0] * len(sbox)
+        self.sbox_size = len(sbox)
+        self.sbox_mask = self.sbox_size - 1  # Fast modulo for powers of 2
+        
+        # Create inverse S-box for decryption
+        self.inverse_sbox = [0] * self.sbox_size
         for i, v in enumerate(sbox):
             self.inverse_sbox[v] = i
             
@@ -99,9 +103,14 @@ class FeistelCipher:
         for i in range(len(half_block)):
             result[i] = half_block[i] ^ subkey[i % len(subkey)]
             
-        # Apply S-box substitution
+        # Apply S-box substitution - properly handling S-box size that's not 256
         for i in range(len(result)):
-            result[i] = self.sbox[result[i]]
+            if self.sbox_size == 256:
+                # Fast path for byte-sized S-box
+                result[i] = self.sbox[result[i]]
+            else:
+                # For non-standard S-box sizes, use modulo to ensure we don't index out of bounds
+                result[i] = self.sbox[result[i] % self.sbox_size] % 256
             
         # Mix bits (equivalent to a simple P-box)
         mixed = bytearray(len(result))
@@ -155,9 +164,14 @@ class FeistelCipher:
         # Generate a random IV
         iv = os.urandom(self.block_size)
         
-        # Use S-box as key if none provided
+        # Use S-box as key if none provided - handle various S-box sizes
         if key is None:
-            key = bytes(self.sbox[:32])  # Use first 32 bytes of S-box as key
+            # Use first 32 bytes of S-box as key, handling case when S-box is smaller
+            key_size = min(32, self.sbox_size)
+            key_bytes = bytearray(32)  # Initialize with zeros
+            for i in range(key_size):
+                key_bytes[i % 32] = self.sbox[i] % 256
+            key = bytes(key_bytes)
             
         # Generate round subkeys
         subkeys = self._generate_subkeys(key)
@@ -202,9 +216,14 @@ class FeistelCipher:
         iv = ciphertext[:self.block_size]
         ciphertext = ciphertext[self.block_size:]
         
-        # Use S-box as key if none provided
+        # Use S-box as key if none provided - handle various S-box sizes
         if key is None:
-            key = bytes(self.sbox[:32])  # Use first 32 bytes of S-box as key
+            # Use first 32 bytes of S-box as key, handling case when S-box is smaller
+            key_size = min(32, self.sbox_size)
+            key_bytes = bytearray(32)  # Initialize with zeros
+            for i in range(key_size):
+                key_bytes[i % 32] = self.sbox[i] % 256
+            key = bytes(key_bytes)
             
         # Generate round subkeys
         subkeys = self._generate_subkeys(key)
@@ -245,5 +264,5 @@ class FeistelCipher:
         return {
             "rounds": self.rounds,
             "block_size": self.block_size,
-            "sbox_size": len(self.sbox)
+            "sbox_size": self.sbox_size
         }

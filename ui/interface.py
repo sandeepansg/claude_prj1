@@ -27,6 +27,10 @@ class UserInterface:
         """Get private key length from user input."""
         return self.input_handler.get_private_key_length()
     
+    def get_test_count(self):
+        """Get consistent test count for all security property tests."""
+        return self.input_handler.get_test_count()
+    
     def get_feistel_params(self):
         """Get Feistel cipher parameters from user input."""
         return self.input_handler.get_feistel_params()

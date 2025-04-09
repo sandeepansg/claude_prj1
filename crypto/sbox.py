@@ -57,20 +57,16 @@ class SBoxGenerator:
         for i in range(self.box_size - 1, 0, -1):
             # Extract bytes to get a random value for index j
             # For larger S-boxes, we need to gather more bytes per index
-            start_idx = i * bytes_per_index
-            end_idx = start_idx + bytes_per_index
-            
-            # Make sure we don't go out of bounds
-            if end_idx > len(key_material):
-                # Generate more key material if needed
-                while end_idx > len(key_material):
-                    h = hashlib.sha256()
-                    h.update(secret_bytes + str(chunks_needed).encode())
-                    chunks_needed += 1
-                    key_material += h.digest()
+            start_idx = i * bytes_per_index % len(key_material)  # Prevent out-of-bounds
+            end_idx = min(start_idx + bytes_per_index, len(key_material))
             
             # Extract bytes for the current index
             j_bytes = key_material[start_idx:end_idx]
+            
+            # If we didn't get enough bytes, pad with zeros
+            if len(j_bytes) < bytes_per_index:
+                padding = bytes(bytes_per_index - len(j_bytes))
+                j_bytes = j_bytes + padding
             
             # Convert bytes to an integer
             if bytes_per_index <= 4:

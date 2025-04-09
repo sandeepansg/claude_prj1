@@ -235,8 +235,17 @@ class UserInterface:
         print("\nThis S-box will be used for the Feistel cipher encryption.")
 
     @staticmethod
-    def show_encryption_results(plaintext, ciphertext, decrypted, time_taken):
-        """Display encryption and decryption results."""
+    def show_encryption_results(plaintext, ciphertext, decrypted, time_taken, feistel_properties):
+        """
+        Display encryption and decryption results along with Feistel properties analysis.
+        
+        Args:
+            plaintext (str): Original plaintext message
+            ciphertext (bytes): Encrypted message
+            decrypted (str): Decrypted message
+            time_taken (float): Time for encryption/decryption process
+            feistel_properties (dict): Results of Feistel cipher security tests
+        """
         print("\n" + "-" * 80)
         print("Feistel Cipher Encryption/Decryption")
         print("-" * 80)
@@ -256,6 +265,16 @@ class UserInterface:
         # Show verification result
         success = plaintext == decrypted
         print(f"\nDecryption verification: {'✓ SUCCESS' if success else '✗ FAILED'}")
+        
+        # Display Feistel cipher security properties
+        print("\nFeistel Cipher Security Analysis:")
+        print(f"- Invertibility: {feistel_properties['invertibility']['success_rate']:.4f} "
+              f"(avg time: {feistel_properties['invertibility']['avg_time']:.6f}s)")
+        print(f"- Avalanche effect: {feistel_properties['avalanche']['average']:.4f} "
+              f"(ideal: {feistel_properties['avalanche']['ideal']:.4f})")
+        print(f"- Statistical randomness: {feistel_properties['randomness']['bit_balance']:.4f}")
+        print(f"- Overall security score: {feistel_properties['overall_score']:.4f}")
+        
         if success:
-            print("The message was successfully encrypted and decrypted, demonstrating")
+            print("\nThe message was successfully encrypted and decrypted, demonstrating")
             print("the complete security pipeline: key exchange → S-box generation → encryption → decryption")

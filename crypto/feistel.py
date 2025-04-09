@@ -63,7 +63,16 @@ class FeistelCipher:
         padding_len = self.block_size - (len(data) % self.block_size)
         if padding_len == 0:
             padding_len = self.block_size  # Full padding block if already aligned
-        padding = bytes([padding_len] * padding_len)
+            
+        # For large block sizes, we need to handle padding differently
+        # PKCS#7 only works for block sizes up to 255 bytes
+        if self.block_size > 255:
+            # Use a modified padding scheme for large blocks
+            # First byte is 1, remaining bytes are 0
+            padding = b'\x01' + b'\x00' * (padding_len - 1)
+        else:
+            padding = bytes([padding_len] * padding_len)
+            
         return data + padding
         
     def _unpad_data(self, data: bytes) -> bytes:
@@ -82,16 +91,34 @@ class FeistelCipher:
         if not data:
             return b''
             
-        padding_len = data[-1]
-        if padding_len > self.block_size or padding_len == 0:
-            raise ValueError("Invalid padding length")
-            
-        # Check that all padding bytes have the correct value
-        for i in range(1, padding_len + 1):
-            if i <= len(data) and data[-i] != padding_len:
-                raise ValueError("Invalid padding values")
+        # For large block sizes, we use a modified padding scheme
+        if self.block_size > 255:
+            # Check for our modified padding (first byte 1, rest 0)
+            # Count trailing zeros and check for pattern
+            zero_count = 0
+            for i in range(len(data) - 1, 0, -1):  # Start from end, avoid underflow
+                if data[i] != 0:
+                    break
+                zero_count += 1
                 
-        return data[:-padding_len]
+            # Check if the byte before zeros is 1
+            if zero_count > 0 and len(data) > zero_count and data[len(data) - zero_count - 1] == 1:
+                # Valid padding
+                return data[:len(data) - zero_count - 1]
+            else:
+                raise ValueError("Invalid padding for large block")
+        else:
+            # Standard PKCS#7 padding
+            padding_len = data[-1]
+            if padding_len > self.block_size or padding_len == 0:
+                raise ValueError("Invalid padding length")
+                
+            # Check that all padding bytes have the correct value
+            for i in range(1, padding_len + 1):
+                if i <= len(data) and data[-i] != padding_len:
+                    raise ValueError("Invalid padding values")
+                    
+            return data[:-padding_len]
     
     def _generate_subkeys(self, key: bytes) -> List[bytes]:
         """
@@ -104,32 +131,31 @@ class FeistelCipher:
             List of round subkeys, each of half_block_size length
         """
         subkeys = []
+        hash_size = 32  # SHA-256 outputs 32 bytes
+        
+        # For very large block sizes, we may need to generate multiple hash outputs
+        # for each round key to ensure sufficient key material
         for i in range(self.rounds):
-            h = hashlib.sha256()
-            h.update(key + str(i).encode())
+            # Initialize round key buffer
+            round_key = bytearray(self.half_block_size)
             
-            # For large block sizes, we need to generate enough key material
-            # by repeating the hash output as needed
-            if self.half_block_size <= 32:  # SHA-256 produces 32 bytes
-                subkeys.append(h.digest()[:self.half_block_size])
-            else:
-                # Generate multiple hash outputs and concatenate
-                key_material = b''
-                bytes_needed = self.half_block_size
-                round_key = bytearray(bytes_needed)
+            # Calculate how many hash outputs we need
+            hash_outputs_needed = (self.half_block_size + hash_size - 1) // hash_size
+            
+            # Generate and combine hash outputs
+            for j in range(hash_outputs_needed):
+                h = hashlib.sha256()
+                h.update(key + str(i).encode() + str(j).encode())
+                digest = h.digest()
                 
-                for j in range((bytes_needed + 31) // 32):  # Ceiling division by 32
-                    h_j = hashlib.sha256()
-                    h_j.update(key + str(i).encode() + str(j).encode())
-                    key_material = h_j.digest()
-                    
-                    # Copy bytes to round key
-                    start_pos = j * 32
-                    for k in range(32):
-                        if start_pos + k < bytes_needed:
-                            round_key[start_pos + k] = key_material[k]
-                            
-                subkeys.append(bytes(round_key))
+                # Copy bytes to round key
+                start_idx = j * hash_size
+                for k in range(hash_size):
+                    pos = start_idx + k
+                    if pos < self.half_block_size:
+                        round_key[pos] = digest[k]
+                        
+            subkeys.append(bytes(round_key))
                 
         return subkeys
     
@@ -152,18 +178,36 @@ class FeistelCipher:
             result[i] = half_block[i] ^ subkey[i % len(subkey)]
             
         # Apply S-box substitution with proper modulo operations
+        # Using the sbox_mask (2^n - 1) for fast modulo when sbox size is a power of 2
         for i in range(len(result)):
-            # Ensure we don't index out of bounds for the S-box
-            index = result[i] % self.sbox_size
-            result[i] = self.sbox[index] % 256  # Ensure output is a valid byte
+            index = result[i] & self.sbox_mask  # Fast modulo for power of 2
+            result[i] = self.sbox[index] & 0xFF  # Ensure output is a valid byte
             
-        # Simple diffusion function (shift bits for better mixing)
-        mixed = bytearray(len(result))
-        for i in range(len(result)):
-            # Rotate bits left by 1
-            mixed[i] = ((result[i] << 1) | (result[i] >> 7)) & 0xFF
+        # Efficient diffusion function for large blocks
+        # We'll use a different strategy for blocks over 64 bytes
+        if len(result) > 64:
+            # For large blocks, use a byte-swapping strategy to provide diffusion
+            mixed = bytearray(len(result))
+            half_len = len(result) // 2
             
-        return bytes(mixed)
+            # Interleave bytes from first and second half
+            for i in range(half_len):
+                mixed[i*2] = result[i]
+                mixed[i*2+1] = result[i + half_len]
+                
+            # Handle odd length if necessary
+            if len(result) % 2 != 0:
+                mixed[-1] = result[-1]
+                
+            return bytes(mixed)
+        else:
+            # For smaller blocks, use the original bit rotation strategy
+            mixed = bytearray(len(result))
+            for i in range(len(result)):
+                # Rotate bits left by 1
+                mixed[i] = ((result[i] << 1) | (result[i] >> 7)) & 0xFF
+                
+            return bytes(mixed)
         
     def _process_block(self, block: bytes, subkeys: List[bytes], encrypt: bool = True) -> bytes:
         """
@@ -176,7 +220,14 @@ class FeistelCipher:
             
         Returns:
             Processed block of the same length
+            
+        Raises:
+            ValueError: If block size doesn't match expected size
         """
+        # Verify block size
+        if len(block) != self.block_size:
+            raise ValueError(f"Block size must be {self.block_size} bytes, got {len(block)}")
+            
         # Split the block into left and right halves
         half_size = len(block) // 2
         L = bytearray(block[:half_size])
@@ -188,9 +239,13 @@ class FeistelCipher:
             # Apply the round function to the right half
             F_output = self._round_function(bytes(R), subkey)
             
+            # Calculate length to use for XOR operation
+            # This handles cases where F_output might be shorter than L
+            xor_length = min(len(L), len(F_output))
+            
             # XOR the left half with the round function output
-            L_new = bytearray(half_size)
-            for i in range(half_size):
+            L_new = bytearray(len(L))
+            for i in range(len(L)):
                 L_new[i] = L[i] ^ F_output[i % len(F_output)]
                 
             # Swap L and R for next round (except for the last round in decryption)

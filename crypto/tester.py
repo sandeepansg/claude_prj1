@@ -15,9 +15,23 @@ class SecurityTester:
         self.mod = dh_instance.mod if dh_instance else None
 
     def test_semigroup(self, count, r, s):
-        """Test semigroup property: T_r(T_s(x)) = T_{r*s}(x) mod q"""
-        if not self.cheby:
-            raise ValueError("DH instance required for polynomial tests")
+    """Test semigroup property: T_r(T_s(x)) = T_{r*s}(x) mod q"""
+    # Input validation
+    if not isinstance(count, int) or count <= 0:
+        raise ValueError("Test count must be a positive integer")
+        
+    if not all(isinstance(x, int) for x in [r, s]):
+        raise TypeError("r and s must be integers")
+        
+    if not self.cheby:
+        raise ValueError("DH instance required for polynomial tests")
+    
+    # Set reasonable limits
+    count = min(count, 100)  # Prevent excessive computation
+    
+    # Validate r and s are within safe range
+    if r <= 0 or s <= 0 or r >= self.mod or s >= self.mod:
+        raise ValueError(f"r and s must be between 1 and {self.mod-1}")
             
         results = []
         for i in range(count):

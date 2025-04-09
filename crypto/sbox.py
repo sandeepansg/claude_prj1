@@ -26,6 +26,12 @@ class SBoxGenerator:
 
         validated_params = SecurityParams.validate_sbox_params(box_size)
         self.box_size = validated_params["box_size"]
+        
+        # Check if box_size is a power of 2 for optimal performance
+        self.is_power_of_two = (self.box_size & (self.box_size - 1)) == 0
+        if not self.is_power_of_two:
+            print(f"Warning: For optimal performance, S-box size should be a power of 2. Current size: {self.box_size}")
+            
         self.shared_secret = shared_secret
         
     def generate(self):

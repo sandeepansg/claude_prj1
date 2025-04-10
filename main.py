@@ -11,6 +11,7 @@ from crypto.property_verifier import PropertyVerifier
 from crypto.feistel import FeistelCipher
 from crypto.sbox import SBoxGenerator
 from ui.interface import UserInterface
+from crypto.key_store import KeyStore
 
 
 def run_demo():
@@ -57,13 +58,98 @@ def run_demo():
             return
 
         try:
-            # Perform key exchange
-            start_time = time.time()
-            exchange = dh.simulate_exchange(entropy, entropy + "_bob")
-            exchange_time = time.time() - start_time
+            # Get key input method (generate new or load from file)
+            key_method = ui.get_key_input_method()
+            
+            if key_method == 'generate':
+                # Perform key exchange with new keys
+                start_time = time.time()
+                exchange = dh.simulate_exchange(entropy, entropy + "_bob")
+                exchange_time = time.time() - start_time
+                
+                # Ask if user wants to save generated keys
+                if ui.get_key_save_preference():
+                    alice_name, bob_name = ui.get_key_owner_names()
+                    ui.save_generated_keys(
+                        exchange["alice_private"], 
+                        exchange["bob_private"],
+                        alice_name,
+                        bob_name,
+                        system_info
+                    )
+            else:
+                # Load keys from files
+                alice_file = ui.get_key_file_path("Alice")
+                if not alice_file:
+                    print("Generating a new key for Alice instead.")
+                    alice_key = None
+                else:
+                    try:
+                        alice_key_data = KeyStore.load_private_key(alice_file)
+                        alice_key = alice_key_data['private_key']
+                        ui.show_key_file_info(alice_key_data)
+                    except Exception as e:
+                        print(f"Error loading Alice's key: {str(e)}")
+                        print("Generating a new key for Alice instead.")
+                        alice_key = None
+                
+                bob_file = ui.get_key_file_path("Bob")
+                if not bob_file:
+                    print("Generating a new key for Bob instead.")
+                    bob_key = None
+                else:
+                    try:
+                        bob_key_data = KeyStore.load_private_key(bob_file)
+                        bob_key = bob_key_data['private_key']
+                        ui.show_key_file_info(bob_key_data)
+                    except Exception as e:
+                        print(f"Error loading Bob's key: {str(e)}")
+                        print("Generating a new key for Bob instead.")
+                        bob_key = None
+                
+                # Perform key exchange with loaded keys
+                start_time = time.time()
+                exchange = dh.simulate_exchange(
+                    entropy if alice_key is None else None,
+                    entropy + "_bob" if bob_key is None else None,
+                    alice_private=alice_key,
+                    bob_private=bob_key
+                )
+                exchange_time = time.time() - start_time
+                
+                # If one or both keys were generated, ask if user wants to save them
+                if alice_key is None or bob_key is None:
+                    if ui.get_key_save_preference():
+                        # Only save keys that were generated
+                        alice_name, bob_name = ui.get_key_owner_names()
+                        
+                        if alice_key is None and bob_key is None:
+                            ui.save_generated_keys(
+                                exchange["alice_private"], 
+                                exchange["bob_private"],
+                                alice_name,
+                                bob_name,
+                                system_info
+                            )
+                        elif alice_key is None:
+                            KeyStore.save_private_key(
+                                exchange["alice_private"],
+                                alice_name,
+                                {"system_parameters": system_info}
+                            )
+                            print(f"\nAlice's key saved successfully.")
+                        elif bob_key is None:
+                            KeyStore.save_private_key(
+                                exchange["bob_private"],
+                                bob_name,
+                                {"system_parameters": system_info}
+                            )
+                            print(f"\nBob's key saved successfully.")
+            
             ui.show_exchange_results(exchange, exchange_time)
         except Exception as e:
             print(f"\nError during key exchange: {str(e)}")
+            traceback.print_exc()  # More detailed error info
             return
 
         try:
@@ -114,6 +200,7 @@ def run_demo():
             ui.show_encryption_results(message, ciphertext, decrypted, encryption_time, feistel_properties)
         except Exception as e:
             print(f"\nError during encryption/decryption demo: {str(e)}")
+            traceback.print_exc()  # More detailed error info
 
     except KeyboardInterrupt:
         print("\nDemo aborted by user.")

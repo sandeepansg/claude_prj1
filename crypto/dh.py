@@ -1,96 +1,179 @@
 """
-Diffie-Hellman key exchange using Chebyshev polynomials.
+Chebyshev polynomial based Diffie-Hellman key exchange implementation.
 """
+import hashlib
+import os
 import random
-import sympy
 import time
 from chebyshev.poly import ChebyshevPoly
 from chebyshev.security import SecurityParams
 
 
 class ChebyshevDH:
-    """Diffie-Hellman key exchange using Chebyshev polynomials."""
-
-    def __init__(self, private_bits=None):
-        # Calculate all parameters based on private key size
+    """Implements Chebyshev polynomial Diffie-Hellman key exchange."""
+    
+    def __init__(self, private_bits=None, preset_private_key=None):
+        """
+        Initialize the Diffie-Hellman key exchange system.
+        
+        Args:
+            private_bits (int, optional): Bit length for private keys
+            preset_private_key (int, optional): Use a preset private key
+        """
+        # Use default bits if not specified
+        if private_bits is None and preset_private_key is None:
+            private_bits = SecurityParams.DEFAULT_PRIVATE_BITS
+        elif preset_private_key is not None:
+            # If preset key is provided, derive bit length from it
+            private_bits = preset_private_key.bit_length()
+        
+        # Generate or set security parameters
         params = SecurityParams.get_secure_params(private_bits)
-        self.private_bits = params["private_bits"]
-        prime_bits = params["prime_bits"]
-        self.public_bits = params["public_bits"]
-        param_bits = params["param_bits"]
-
-        # Generate prime modulus
-        self.mod = sympy.randprime(2 ** (prime_bits - 1), 2 ** prime_bits)
-
-        # Create Chebyshev polynomial calculator
-        self.cheby = ChebyshevPoly(self.mod)
-
-        # Generate public parameter exactly one bit less than prime
-        self.param = random.randint(2 ** (param_bits - 1), 2 ** param_bits - 1)
-
-    def generate_keypair(self, entropy=None):
-        """Generate a private and public key pair."""
-        # Sanitize entropy input
-        if entropy is not None:
-            if not isinstance(entropy, (str, bytes)):
-                raise TypeError("Entropy must be a string or bytes")
-            # Limit entropy length to prevent DoS
-            entropy = str(entropy)[:1024]
-            random.seed(hash(f"{entropy}{time.time()}"))
-
-            # Generate private key of appropriate length
-            private_min = 2 ** (self.private_bits - 1)
-            private_max = 2 ** self.private_bits - 1
-            private = random.randint(private_min, private_max)
-
-            # Calculate raw public key
-            raw_public = self.cheby.eval(private, self.param)
-
-            # Format public key to specified bit length
-            mask = (1 << self.public_bits) - 1
-            public = (raw_public & mask) | (1 << (self.public_bits - 1))
-            public %= self.mod
-
-            return private, public, raw_public
-
-    def compute_shared(self, private, other_public):
-        """Compute shared secret using DH principle."""
-        # Validate inputs
-        if not isinstance(private, int) or private <= 0 or private >= self.mod:
-            raise ValueError(f"Private key must be an integer between 1 and {self.mod-1}")
-
-        if not isinstance(other_public, int) or other_public <= 0 or other_public >= self.mod:
-            raise ValueError(f"Public key must be an integer between 1 and {self.mod-1}")
-
-        return self.cheby.eval(private, other_public)
-
-    def simulate_exchange(self, alice_entropy=None, bob_entropy=None):
-        """Simulate complete key exchange between two parties."""
-        alice_priv, alice_pub, alice_raw = self.generate_keypair(alice_entropy)
-        bob_priv, bob_pub, bob_raw = self.generate_keypair(bob_entropy)
-
-        alice_shared = self.compute_shared(alice_priv, bob_raw)
-        bob_shared = self.compute_shared(bob_priv, alice_raw)
-
-        return {
-            "alice_private": alice_priv,
-            "alice_public": alice_pub,
-            "alice_raw_public": alice_raw,
-            "bob_private": bob_priv,
-            "bob_public": bob_pub,
-            "bob_raw_public": bob_raw,
-            "alice_shared": alice_shared,
-            "bob_shared": bob_shared,
-            "match": alice_shared == bob_shared
-        }
-
+        self.prime_bits = params['prime_bits']
+        self.prime_modulus = params['prime_modulus']
+        self.private_bits = params['private_bits']
+        
+        # Set public parameter (one bit less than prime for security)
+        self.public_param = params['public_param']
+        
+        # Store the polynomial evaluator
+        self.poly = ChebyshevPoly(self.prime_modulus)
+        
+        # Store preset private key if provided
+        self.preset_private_key = preset_private_key
+    
     def get_system_info(self):
-        """Get system parameters for display purposes."""
+        """
+        Get information about the current system parameters.
+        
+        Returns:
+            dict: System parameters and sizes
+        """
         return {
-            "mod": self.mod,
-            "mod_bits": self.mod.bit_length(),
-            "param": self.param,
-            "param_bits": self.param.bit_length(),
-            "private_bits": self.private_bits,
-            "public_bits": self.public_bits
+            'mod': self.prime_modulus,
+            'mod_bits': self.prime_modulus.bit_length(),
+            'param': self.public_param,
+            'param_bits': self.public_param.bit_length(),
+            'private_bits': self.private_bits,
+            'public_bits': self.poly.eval(2, self.public_param).bit_length()
+        }
+    
+    def _generate_private_key(self, entropy=None):
+        """
+        Generate a secure private key.
+        
+        Args:
+            entropy (str, optional): Additional entropy for key generation
+            
+        Returns:
+            int: Generated private key
+        """
+        # If a preset key is provided, use it instead of generating one
+        if self.preset_private_key is not None:
+            return self.preset_private_key
+            
+        # Use system time and OS-provided randomness as seed
+        seed = str(time.time()) + str(os.urandom(32))
+        
+        # Add user-provided entropy if available
+        if entropy:
+            seed += entropy
+        
+        # Create a hash of the seed
+        hash_obj = hashlib.sha512(seed.encode())
+        hash_hex = hash_obj.hexdigest()
+        
+        # Convert hash to integer and ensure it's the right size
+        key_int = int(hash_hex, 16)
+        mask = (1 << self.private_bits) - 1
+        private_key = key_int & mask
+        
+        # Ensure private key is not too small
+        min_value = 1 << (self.private_bits - 1)
+        if private_key < min_value:
+            private_key |= min_value
+        
+        return private_key
+    
+    def generate_key_pair(self, entropy=None):
+        """
+        Generate a private-public key pair.
+        
+        Args:
+            entropy (str, optional): Additional entropy for key generation
+            
+        Returns:
+            tuple: (private_key, raw_public_key, formatted_public_key)
+        """
+        # Generate private key
+        private_key = self._generate_private_key(entropy)
+        
+        # Generate raw public key: T_a(x) mod p
+        raw_public_key = self.poly.eval(private_key, self.public_param)
+        
+        # Format public key to ensure it's in the correct range
+        formatted_public_key = raw_public_key
+        
+        return private_key, raw_public_key, formatted_public_key
+    
+    def compute_shared_secret(self, private_key, other_public_key):
+        """
+        Compute shared secret using own private key and other's public key.
+        
+        Args:
+            private_key (int): Own private key
+            other_public_key (int): Other party's public key
+            
+        Returns:
+            int: Computed shared secret
+        """
+        # Compute T_a(T_b(x)) = T_b(T_a(x)) = T_ab(x) mod p
+        shared_secret = self.poly.eval(private_key, other_public_key)
+        return shared_secret
+    
+    def simulate_exchange(self, alice_entropy=None, bob_entropy=None, 
+                          preset_alice_key=None, preset_bob_key=None):
+        """
+        Simulate a complete key exchange between Alice and Bob.
+        
+        Args:
+            alice_entropy (str, optional): Entropy for Alice's key generation
+            bob_entropy (str, optional): Entropy for Bob's key generation
+            preset_alice_key (int, optional): Preset private key for Alice
+            preset_bob_key (int, optional): Preset private key for Bob
+            
+        Returns:
+            dict: Complete exchange results
+        """
+        # Override preset key for this exchange if specified
+        temp_preset = self.preset_private_key
+        
+        # Generate or use Alice's keys
+        self.preset_private_key = preset_alice_key
+        alice_private, alice_raw_public, alice_public = self.generate_key_pair(alice_entropy)
+        
+        # Generate or use Bob's keys
+        self.preset_private_key = preset_bob_key
+        bob_private, bob_raw_public, bob_public = self.generate_key_pair(bob_entropy)
+        
+        # Restore the original preset key
+        self.preset_private_key = temp_preset
+        
+        # Compute shared secrets
+        alice_shared = self.compute_shared_secret(alice_private, bob_public)
+        bob_shared = self.compute_shared_secret(bob_private, alice_public)
+        
+        # Check if shared secrets match (they should)
+        match = alice_shared == bob_shared
+        
+        return {
+            'alice_private': alice_private,
+            'alice_raw_public': alice_raw_public,
+            'alice_public': alice_public,
+            'bob_private': bob_private,
+            'bob_raw_public': bob_raw_public,
+            'bob_public': bob_public,
+            'alice_shared': alice_shared,
+            'bob_shared': bob_shared,
+            'match': match
         }

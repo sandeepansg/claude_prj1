@@ -7,6 +7,7 @@ import traceback
 from chebyshev.security import SecurityParams
 from crypto.dh import ChebyshevDH
 from crypto.tester import SecurityTester
+from crypto.property_verifier import PropertyVerifier
 from crypto.feistel import FeistelCipher
 from crypto.sbox import SBoxGenerator
 from ui.interface import UserInterface
@@ -45,6 +46,9 @@ def run_demo():
             dh = ChebyshevDH(private_bits)
             init_time = time.time() - start_time
 
+            # Initialize UI testers with DH instance
+            ui.initialize_testers(dh)
+
             # Display system info
             system_info = dh.get_system_info()
             ui.show_system_info(system_info, init_time)
@@ -64,15 +68,11 @@ def run_demo():
 
         try:
             # Verify mathematical properties for security
-            tester = SecurityTester(dh)
             a_priv, b_priv = exchange["alice_private"], exchange["bob_private"]
 
             # Test essential properties with consistent test count
-            semigroup_results = tester.test_semigroup(test_count, a_priv, b_priv)
-            ui.show_semigroup_test(semigroup_results)
-
-            commutative_results = tester.test_commutative(test_count, a_priv, b_priv)
-            ui.show_commutative_test(commutative_results)
+            semigroup_results = ui.test_and_show_semigroup(a_priv, b_priv, test_count)
+            commutative_results = ui.test_and_show_commutative(a_priv, b_priv, test_count)
         except Exception as e:
             print(f"\nError testing cryptographic properties: {str(e)}")
             traceback.print_exc()  # More detailed error info
@@ -85,7 +85,7 @@ def run_demo():
             sbox_time = time.time() - start_time
 
             # Test S-box properties with consistent test count
-            sbox_properties = tester.test_sbox_properties(sbox, test_samples=test_count)
+            sbox_properties = ui.test_sbox_properties(sbox, test_samples=test_count)
             ui.show_sbox_info(sbox, sbox_properties, sbox_time)
         except Exception as e:
             print(f"\nError during S-box generation or analysis: {str(e)}")
@@ -108,7 +108,7 @@ def run_demo():
             decrypted = cipher.decrypt(ciphertext)
             
             # Test Feistel cipher properties with consistent test count
-            feistel_properties = tester.test_feistel_properties(cipher, iterations=test_count)
+            feistel_properties = ui.test_feistel_properties(cipher, iterations=test_count)
             
             encryption_time = time.time() - start_time
             ui.show_encryption_results(message, ciphertext, decrypted, encryption_time, feistel_properties)

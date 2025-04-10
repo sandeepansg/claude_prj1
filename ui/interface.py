@@ -77,7 +77,7 @@ class UserInterface:
         if not self.property_verifier:
             raise ValueError("Property verifier not initialized. Call initialize_testers first.")
         results = self.property_verifier.test_semigroup(count, r, s)
-        self.analysis_display.show_semigroup_test(results)
+        self.show_semigroup_test(results)
         return results
     
     def test_and_show_commutative(self, r, s, count=10):
@@ -85,7 +85,7 @@ class UserInterface:
         if not self.property_verifier:
             raise ValueError("Property verifier not initialized. Call initialize_testers first.")
         results = self.property_verifier.test_commutative(count, r, s)
-        self.analysis_display.show_commutative_test(results)
+        self.show_commutative_test(results)
         return results
     
     def test_sbox_properties(self, sbox, test_samples=None):

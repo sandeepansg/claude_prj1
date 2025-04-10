@@ -69,6 +69,8 @@ from chebyshev.security import SecurityParams
 from crypto.dh import ChebyshevDH
 from crypto.feistel import FeistelCipher
 from crypto.sbox import SBoxGenerator
+from crypto.property_verifier import PropertyVerifier
+from crypto.tester import SecurityTester
 
 # Initialize with 32-bit private keys
 dh = ChebyshevDH(private_bits=32)
@@ -88,12 +90,24 @@ bob_shared = dh.compute_shared(bob_private, alice_raw)
 # Verify that both parties have the same secret
 assert alice_shared == bob_shared
 
+# Test the critical security properties
+verifier = PropertyVerifier(dh)
+semigroup_results = verifier.test_semigroup(10, alice_private, bob_private)
+commutative_results = verifier.test_commutative(10, alice_private, bob_private)
+
 # Create S-box from shared secret
 sbox_gen = SBoxGenerator(alice_shared)
 sbox = sbox_gen.generate()
 
+# Test S-box security properties
+tester = SecurityTester(dh)
+sbox_properties = tester.test_sbox_properties(sbox)
+
 # Initialize Feistel cipher with the S-box
 cipher = FeistelCipher(sbox, rounds=16)
+
+# Test Feistel cipher security properties
+feistel_properties = tester.test_feistel_properties(cipher)
 
 # Encrypt a message
 plaintext = b"This is a secret message"
@@ -167,6 +181,7 @@ chebyshev-crypto/
 │   ├── dh.py                   # Diffie-Hellman implementation
 │   ├── feistel.py              # Feistel cipher implementation
 │   ├── sbox.py                 # S-box generation from shared secret
+│   ├── property_verifier.py    # Mathematical property verification
 │   └── tester.py               # Security property testing
 ├── ui/
 │   ├── __init__.py             # UI module exports
@@ -196,6 +211,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - Create a web-based demo interface
 - Add benchmarking tools for performance comparison with traditional algorithms
 - Implement hardware acceleration for polynomial evaluation
+- Add integration tests for the full encryption pipeline
+- Expand the property verification to include more mathematical proofs
 
 ## License
 

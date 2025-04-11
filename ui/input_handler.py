@@ -3,13 +3,11 @@ Input handler for the Chebyshev cryptosystem.
 Handles all user input operations.
 """
 from chebyshev.security import SecurityParams
-from crypto.key_store import KeyStore
-import os
 
 
 class InputHandler:
     """Handles user inputs and validation."""
-    
+
     # Default test count for consistency
     DEFAULT_TEST_COUNT = 5
     MIN_TEST_COUNT = 3
@@ -43,126 +41,17 @@ class InputHandler:
         return SecurityParams.DEFAULT_PRIVATE_BITS
 
     @staticmethod
-    def get_key_input_method():
-        """
-        Ask user how they want to input their private key.
-        
-        Returns:
-            str: 'generate' or 'file'
-        """
-        print("\nKey Input Method")
-        print("-" * 30)
-        print("1. Generate new keys")
-        print("2. Load keys from file")
-        
-        while True:
-            choice = input("Enter your choice [1/2, default=1]: ").strip()
-            if not choice or choice == '1':
-                return 'generate'
-            elif choice == '2':
-                return 'file'
-            else:
-                print("Invalid choice. Please enter 1 or 2.")
-
-    @staticmethod
-    def get_key_file_path(participant="user"):
-        """
-        Get key file path from user.
-        
-        Args:
-            participant (str): Name of participant (for display purposes)
-            
-        Returns:
-            str: Path to key file, or None if user cancels
-        """
-        # First list available keys
-        available_keys = KeyStore.list_available_keys()
-        
-        if available_keys:
-            print(f"\nAvailable key files for {participant}:")
-            for i, key_info in enumerate(available_keys, 1):
-                print(f"{i}. {key_info['filename']} (Owner: {key_info['owner']}, Created: {key_info['created']})")
-            print(f"{len(available_keys) + 1}. Enter a custom file path")
-            print(f"{len(available_keys) + 2}. Cancel and generate a new key")
-            
-            while True:
-                choice = input(f"Enter your choice [1-{len(available_keys) + 2}]: ").strip()
-                try:
-                    choice_num = int(choice)
-                    if 1 <= choice_num <= len(available_keys):
-                        return os.path.join(KeyStore.DEFAULT_KEYS_DIR, available_keys[choice_num - 1]['filename'])
-                    elif choice_num == len(available_keys) + 1:
-                        # Custom file path
-                        break
-                    elif choice_num == len(available_keys) + 2:
-                        # Cancel
-                        return None
-                    else:
-                        print(f"Please enter a number between 1 and {len(available_keys) + 2}")
-                except ValueError:
-                    print("Please enter a valid number")
-        
-        # Custom file path input
-        while True:
-            file_path = input(f"Enter the path to {participant}'s key file (or 'cancel'): ").strip()
-            if file_path.lower() == 'cancel':
-                return None
-            
-            if os.path.exists(file_path):
-                return file_path
-            else:
-                print(f"File not found: {file_path}")
-                retry = input("Try again? [y/n, default=y]: ").strip().lower()
-                if retry == 'n':
-                    return None
-
-    @staticmethod
-    def get_key_save_preference():
-        """
-        Ask if user wants to save generated keys.
-        
-        Returns:
-            bool: True if user wants to save keys, False otherwise
-        """
-        while True:
-            save = input("Do you want to save the generated keys to files? [y/n, default=y]: ").strip().lower()
-            if not save or save == 'y':
-                return True
-            elif save == 'n':
-                return False
-            else:
-                print("Please enter 'y' or 'n'")
-
-    @staticmethod
-    def get_key_owner_names():
-        """
-        Get owner names for key files.
-        
-        Returns:
-            tuple: (alice_name, bob_name)
-        """
-        alice_name = input("Enter a name for Alice's key [default=alice]: ").strip()
-        if not alice_name:
-            alice_name = "alice"
-            
-        bob_name = input("Enter a name for Bob's key [default=bob]: ").strip()
-        if not bob_name:
-            bob_name = "bob"
-            
-        return alice_name, bob_name
-
-    @staticmethod
     def get_test_count():
         """Get consistent test count for all security property tests."""
         print("\nTest Configuration")
         print("-" * 30)
-        
+
         test_count = InputHandler.DEFAULT_TEST_COUNT  # Set default first
         while True:
             count_input = input(f"Enter number of tests to run [default={InputHandler.DEFAULT_TEST_COUNT}, min={InputHandler.MIN_TEST_COUNT}, max={InputHandler.MAX_TEST_COUNT}]: ")
             if not count_input.strip():
                 break  # Use default already set
-                
+
             try:
                 test_count = int(count_input)
                 if test_count < InputHandler.MIN_TEST_COUNT:
@@ -174,7 +63,7 @@ class InputHandler:
                 break
             except ValueError:
                 print("Please enter a valid number")
-                
+
         return test_count
 
     @staticmethod
@@ -182,14 +71,14 @@ class InputHandler:
         """Get Feistel cipher parameters from user input."""
         print("\nFeistel Cipher Configuration")
         print("-" * 30)
-        
+
         # Get rounds
         rounds = SecurityParams.DEFAULT_FEISTEL_ROUNDS  # Set default first
         while True:
             rounds_input = input(f"Enter number of Feistel rounds [default={SecurityParams.DEFAULT_FEISTEL_ROUNDS}]: ")
             if not rounds_input.strip():
                 break  # Use default already set
-                
+
             try:
                 rounds = int(rounds_input)
                 if rounds >= SecurityParams.MIN_FEISTEL_ROUNDS:
@@ -197,14 +86,14 @@ class InputHandler:
                 print(f"Error: Number of rounds must be at least {SecurityParams.MIN_FEISTEL_ROUNDS} for security")
             except ValueError:
                 print("Please enter a valid number")
-                
+
         # Get block size
         block_size = SecurityParams.DEFAULT_BLOCK_SIZE  # Set default first
         while True:
             block_input = input(f"Enter block size in bytes [default={SecurityParams.DEFAULT_BLOCK_SIZE}, max={SecurityParams.MAX_BLOCK_SIZE}]: ")
             if not block_input.strip():
                 break  # Use default already set
-                
+
             try:
                 block_size = int(block_input)
                 if block_size < SecurityParams.MIN_BLOCK_SIZE:
@@ -216,21 +105,21 @@ class InputHandler:
                 break
             except ValueError:
                 print("Please enter a valid number")
-                
+
         return rounds, block_size
-        
+
     @staticmethod
     def get_sbox_params():
         """Get S-box parameters from user input."""
         print("\nS-Box Configuration")
         print("-" * 30)
-        
+
         box_size = SecurityParams.DEFAULT_SBOX_SIZE  # Set default first
         while True:
             size_input = input(f"Enter S-box size [default={SecurityParams.DEFAULT_SBOX_SIZE}, max={SecurityParams.MAX_SBOX_SIZE}]: ")
             if not size_input.strip():
                 return box_size  # Return default already set
-                
+
             try:
                 box_size = int(size_input)
                 if box_size < SecurityParams.MIN_SBOX_SIZE:
@@ -254,3 +143,170 @@ class InputHandler:
         default_message = "This is a secure message exchanged using Chebyshev polynomials!"
         message = input(f"Enter a message to encrypt [default: '{default_message}']: ")
         return message.strip() if message.strip() else default_message
+
+    @staticmethod
+    def get_manual_key_choice():
+        """Get user choice for manual key entry."""
+        print("\nKey Exchange Options")
+        print("-" * 30)
+        print("1. Use automatically generated keys")
+        print("2. Manually enter Alice's private key")
+        print("3. Manually enter Bob's private key")
+        print("4. Manually enter both private keys")
+
+        while True:
+            choice = input("Select an option [default=1]: ")
+            if not choice.strip():
+                return 1  # Default to automatic keys
+
+            try:
+                choice_num = int(choice)
+                if 1 <= choice_num <= 4:
+                    return choice_num
+                print("Please enter a number between 1 and 4")
+            except ValueError:
+                print("Please enter a valid number")
+
+    @staticmethod
+    def get_manual_private_key(party_name, default_key, encoded_default):
+        """Get manually entered private key."""
+        print(f"\nManual {party_name} Key Entry")
+        print("-" * 30)
+        print(f"Default {party_name} private key (Base64): {encoded_default}")
+        print(f"Default {party_name} private key (hex): 0x{default_key:X}")
+        print(f"Default {party_name} private key bit length: {default_key.bit_length()} bits")
+
+        # First ask if user wants to use encoded key or enter a new integer
+        print("\nKey Input Options:")
+        print("1. Enter a Base64-encoded key")
+        print("2. Enter a decimal integer key")
+        print("3. Enter a hexadecimal key (with 0x prefix)")
+
+        entry_mode = 1  # Default to Base64
+        while True:
+            mode_input = input("Select entry mode [default=1]: ")
+            if not mode_input.strip():
+                break
+
+            try:
+                entry_mode = int(mode_input)
+                if 1 <= entry_mode <= 3:
+                    break
+                print("Please select 1, 2, or 3")
+            except ValueError:
+                print("Please enter a valid number")
+
+        # Now get the key based on the selected mode
+        while True:
+            if entry_mode == 1:
+                key_input = input(f"Enter {party_name}'s Base64-encoded private key [or leave empty for default]: ")
+                if not key_input.strip():
+                    return default_key
+
+                try:
+                    # Will be decoded in the DH class
+                    return key_input.strip()
+                except ValueError as e:
+                    print(f"Invalid Base64 private key: {str(e)}")
+
+            elif entry_mode == 2:
+                key_input = input(f"Enter {party_name}'s private key as decimal integer [or leave empty for default]: ")
+                if not key_input.strip():
+                    return default_key
+
+                try:
+                    return int(key_input.strip())
+                except ValueError:
+                    print("Please enter a valid integer")
+
+            elif entry_mode == 3:
+                key_input = input(f"Enter {party_name}'s private key as hex (with 0x prefix) [or leave empty for default]: ")
+                if not key_input.strip():
+                    return default_key
+
+                try:
+                    if not key_input.lower().startswith("0x"):
+                        print("Hexadecimal keys must start with 0x")
+                        continue
+                    return int(key_input, 16)
+                except ValueError:
+                    print("Please enter a valid hexadecimal number")
+
+    @staticmethod
+    def get_encryption_key_choice(shared_key=None):
+        """Choose whether to use generated shared key or enter a custom key for encryption."""
+        print("\nEncryption Key Options")
+        print("-" * 30)
+        print("1. Use the computed shared secret from key exchange")
+        print("2. Manually enter a different key")
+
+        while True:
+            choice = input("Select an option [default=1]: ")
+            if not choice.strip():
+                return shared_key, 1  # Default to using the generated shared key
+
+            try:
+                choice_num = int(choice)
+                if choice_num == 1:
+                    return shared_key, 1
+                elif choice_num == 2:
+                    # Get a custom key
+                    print("\nManual Encryption Key Entry")
+                    print("-" * 30)
+                    if shared_key is not None:
+                        print(f"Current shared key (hex): 0x{shared_key:X}")
+                        print(f"Current shared key bit length: {shared_key.bit_length()} bits")
+
+                    # Let user choose input format
+                    print("\nKey Input Options:")
+                    print("1. Enter a decimal integer key")
+                    print("2. Enter a hexadecimal key (with 0x prefix)")
+
+                    format_choice = 1
+                    format_input = input("Select input format [default=1]: ")
+                    if format_input.strip():
+                        try:
+                            format_choice = int(format_input)
+                            if format_choice not in (1, 2):
+                                print("Invalid choice, using decimal format")
+                                format_choice = 1
+                        except ValueError:
+                            print("Invalid choice, using decimal format")
+
+                    while True:
+                        if format_choice == 1:
+                            key_input = input("Enter encryption key as decimal integer: ")
+                            if not key_input.strip():
+                                print("Key input cannot be empty when using custom keys")
+                                continue
+
+                            try:
+                                custom_key = int(key_input.strip())
+                                if custom_key <= 0:
+                                    print("Key must be a positive integer")
+                                    continue
+                                return custom_key, 2
+                            except ValueError:
+                                print("Please enter a valid integer")
+
+                        elif format_choice == 2:
+                            key_input = input("Enter encryption key as hex (with 0x prefix): ")
+                            if not key_input.strip():
+                                print("Key input cannot be empty when using custom keys")
+                                continue
+
+                            try:
+                                if not key_input.lower().startswith("0x"):
+                                    print("Hexadecimal keys must start with 0x")
+                                    continue
+                                custom_key = int(key_input, 16)
+                                if custom_key <= 0:
+                                    print("Key must be a positive integer")
+                                    continue
+                                return custom_key, 2
+                            except ValueError:
+                                print("Please enter a valid hexadecimal number")
+                else:
+                    print("Please enter 1 or 2")
+            except ValueError:
+                print("Please enter a valid number")

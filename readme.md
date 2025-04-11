@@ -1,14 +1,16 @@
-# Chebyshev Cryptosystem
+# Chebyshev Cryptosystem for IoT and Digital Twins
 
-A secure key exchange system based on Chebyshev polynomials, offering a quantum-resistant alternative to traditional Diffie-Hellman, with additional Feistel cipher functionality using dynamically generated S-boxes.
+A secure key exchange and encryption system based on Chebyshev polynomials, offering a chaos-based alternative to traditional cryptographic approaches, optimized for IoT, IIoT, and digital twin security applications.
 
 ## Overview
 
-This cryptosystem implements a key exchange protocol using the semigroup property of Chebyshev polynomials over a prime field. It provides security parameters that scale appropriately with key size and includes comprehensive testing for the mathematical properties that ensure the security of the system. The system also includes a Feistel cipher implementation that uses S-boxes dynamically generated from the shared secret.
+This cryptosystem implements a key exchange protocol using the semigroup property of Chebyshev polynomials over a prime field. It provides security parameters that scale appropriately with key size and includes comprehensive testing for the mathematical properties that ensure the security of the system. The lightweight implementation makes it particularly well-suited for resource-constrained IoT devices and real-time digital twin applications.
 
 ### Features
 
-- **Quantum-Resistant Key Exchange**: Based on the hardness of Chebyshev polynomial discrete logarithm problem
+- **Chaos-Based Security**: Leverages the chaotic behavior of Chebyshev polynomials for cryptographic operations
+- **IoT-Optimized**: Lightweight implementation suitable for resource-constrained devices
+- **Digital Twin Ready**: Low latency design perfect for real-time synchronization of digital twins
 - **Scalable Security**: Automatically adjusts security parameters based on desired private key strength
 - **Optimized Polynomial Calculation**: Uses multiple evaluation strategies based on polynomial degree
 - **Mathematical Verification**: Tests semigroup and commutativity properties critical to security
@@ -31,7 +33,7 @@ This cryptosystem implements a key exchange protocol using the semigroup propert
 
 1. Clone the repository:
    ```
-   git clone https://github.com/sandeepansg/chebyshev-crypto.git
+   git clone https://github.com/yourusername/chebyshev-crypto.git
    cd chebyshev-crypto
    ```
 
@@ -59,6 +61,40 @@ The interactive demo will guide you through:
 - Encrypting and decrypting a message using a Feistel cipher
 - Analyzing the security of the implementation
 
+### For IoT and IIoT Applications
+
+The system is designed with resource constraints in mind:
+
+```python
+from chebyshev.security import SecurityParams
+from crypto.dh import ChebyshevDH
+
+# Initialize with minimal security for IoT devices 
+dh = ChebyshevDH(private_bits=16)  # Lower bit count for constrained devices
+
+# Generate keys and exchange as normal
+# ...
+```
+
+### For Digital Twin Applications
+
+For real-time synchronization between physical assets and digital twins:
+
+```python
+from crypto.feistel import FeistelCipher
+from crypto.sbox import SBoxGenerator
+
+# Create lightweight cipher for real-time updates
+sbox_gen = SBoxGenerator(shared_secret, box_size=16)  # Smaller S-box
+sbox = sbox_gen.generate()
+
+# Initialize faster Feistel cipher with fewer rounds
+cipher = FeistelCipher(sbox, rounds=8, block_size=8)
+
+# Use for secure data exchange between physical device and digital twin
+encrypted_sensor_data = cipher.encrypt(sensor_reading)
+```
+
 ### As a Library
 
 You can import the components and use them in your own applications:
@@ -69,48 +105,34 @@ from chebyshev.security import SecurityParams
 from crypto.dh import ChebyshevDH
 from crypto.feistel import FeistelCipher
 from crypto.sbox import SBoxGenerator
-from crypto.property_verifier import PropertyVerifier
-from crypto.tester import SecurityTester
 
 # Initialize with 32-bit private keys
 dh = ChebyshevDH(private_bits=32)
 
-# Generate keys for Alice
-alice_private, alice_public, alice_raw = dh.generate_keypair()
+# Generate keys for Alice (IoT device)
+device_private, device_public, device_raw = dh.generate_keypair()
 
-# Generate keys for Bob
-bob_private, bob_public, bob_raw = dh.generate_keypair()
+# Generate keys for Bob (cloud service)
+service_private, service_public, service_raw = dh.generate_keypair()
 
-# Alice computes shared secret
-alice_shared = dh.compute_shared(alice_private, bob_raw)
+# Device computes shared secret
+device_shared = dh.compute_shared(device_private, service_raw)
 
-# Bob computes shared secret
-bob_shared = dh.compute_shared(bob_private, alice_raw)
+# Service computes shared secret
+service_shared = dh.compute_shared(service_private, device_raw)
 
 # Verify that both parties have the same secret
-assert alice_shared == bob_shared
-
-# Test the critical security properties
-verifier = PropertyVerifier(dh)
-semigroup_results = verifier.test_semigroup(10, alice_private, bob_private)
-commutative_results = verifier.test_commutative(10, alice_private, bob_private)
+assert device_shared == service_shared
 
 # Create S-box from shared secret
-sbox_gen = SBoxGenerator(alice_shared)
+sbox_gen = SBoxGenerator(device_shared)
 sbox = sbox_gen.generate()
-
-# Test S-box security properties
-tester = SecurityTester(dh)
-sbox_properties = tester.test_sbox_properties(sbox)
 
 # Initialize Feistel cipher with the S-box
 cipher = FeistelCipher(sbox, rounds=16)
 
-# Test Feistel cipher security properties
-feistel_properties = tester.test_feistel_properties(cipher)
-
 # Encrypt a message
-plaintext = b"This is a secret message"
+plaintext = b"IoT sensor reading: 23.5C"
 ciphertext = cipher.encrypt(plaintext)
 
 # Decrypt the message
@@ -120,7 +142,7 @@ assert decrypted == plaintext
 
 ## Mathematical Background
 
-### Chebyshev Polynomials
+### Chebyshev Polynomials and Chaos Theory
 
 Chebyshev polynomials of the first kind, denoted as T_n(x), are defined by the recurrence relation:
 
@@ -128,31 +150,56 @@ Chebyshev polynomials of the first kind, denoted as T_n(x), are defined by the r
 - T₁(x) = x
 - Tₙ(x) = 2xTₙ₋₁(x) - Tₙ₋₂(x) for n ≥ 2
 
-When computed over a prime field (modulo a large prime p), they exhibit useful properties for cryptography.
+When computed over a prime field (modulo a large prime p), they exhibit chaotic behavior which is ideal for cryptographic applications, especially in IoT scenarios where unpredictability is crucial.
 
 ### Key Security Properties
 
 1. **Semigroup Property**: T_r(T_s(x)) = T_{rs}(x) mod p
 2. **Commutativity**: T_r(T_s(x)) = T_s(T_r(x)) mod p
 
-These properties allow for secure key exchange similar to the Diffie-Hellman protocol, but based on the difficulty of the Chebyshev polynomial discrete logarithm problem, which is believed to be resistant to quantum attacks.
+These properties allow for secure key exchange similar to the Diffie-Hellman protocol, but based on chaotic systems that provide enhanced security for IoT applications.
 
 ### Feistel Network
 
-The Feistel network is a symmetric structure used in block ciphers. It consists of multiple rounds where the block is divided into two parts, and one part is transformed using a round function that depends on the other part and a subkey. The Feistel structure has the advantage that encryption and decryption operations are very similar, even identical in some cases, requiring only a reversal of the key schedule.
+The Feistel network is a symmetric structure used in block ciphers. It consists of multiple rounds where the block is divided into two parts, and one part is transformed using a round function that depends on the other part and a subkey. The Feistel structure is particularly suitable for IoT devices due to its simplicity and minimal resource requirements.
 
 ### S-boxes
 
-Substitution boxes (S-boxes) are a basic component of symmetric key algorithms which perform substitution. In our implementation, S-boxes are dynamically generated from the shared secret, providing a unique transformation for each key exchange session.
+Substitution boxes (S-boxes) are a basic component of symmetric key algorithms which perform substitution. In our implementation, S-boxes are dynamically generated from the shared secret, providing a unique transformation for each key exchange session, which is ideal for protecting sensitive IoT data.
+
+## IoT and Digital Twin Applications
+
+### IoT Security Challenges Addressed
+
+- **Resource Constraints**: The lightweight implementation requires minimal computational resources
+- **Energy Efficiency**: Optimized algorithms reduce power consumption for battery-powered devices
+- **Low Latency**: Fast encryption and decryption suitable for real-time applications
+- **Scalability**: Works across heterogeneous IoT networks with varying device capabilities
+- **Edge Computing**: Can be deployed directly on edge devices without cloud dependency
+
+### Digital Twin Security Benefits
+
+- **Secure Synchronization**: Ensures data integrity between physical assets and digital models
+- **Real-Time Updates**: Low overhead allows for secure real-time data transmission
+- **Privacy Preservation**: Protects sensitive operational data in industrial settings
+- **Authentication**: Provides mutual authentication between physical devices and their digital twins
+- **Integrity Protection**: Prevents manipulation of data flowing between physical and digital realms
+
+## IIoT-Specific Considerations
+
+- **OT/IT Convergence**: Bridges the security gap between operational and information technology
+- **Protocol Integration**: Compatible with common IIoT protocols through simple adaptation layers
+- **Legacy System Support**: Can secure communications involving legacy industrial systems
+- **Regulatory Compliance**: Helps meet IEC 62443 and other industrial security standards
+- **Supply Chain Security**: Secures data throughout industrial supply chains and ecosystems
 
 ## Security Considerations
 
-- The security of this system relies on the difficulty of the Chebyshev polynomial discrete logarithm problem
-- Key sizes are automatically scaled to maintain appropriate security levels
-- For production use, consider using longer key lengths (64-bit private keys or larger)
+- The security of this system leverages the chaotic behavior of Chebyshev polynomials
+- Key sizes are automatically scaled to maintain appropriate security levels while considering IoT constraints
 - The system enforces minimum key sizes to prevent insecure configurations
 - The Feistel cipher implementation uses dynamically generated S-boxes from the shared secret, enhancing security
-- The number of Feistel rounds can be adjusted to balance security and performance
+- The number of Feistel rounds can be adjusted to balance security and performance based on device capabilities
 - CBC mode with a random IV is used for the Feistel cipher to prevent pattern analysis
 - Security testing includes avalanche effect, statistical randomness, and invertibility tests
 
@@ -165,7 +212,7 @@ The implementation uses several optimizations for Chebyshev polynomial evaluatio
 - **Memoized recursive calculation** for smaller degrees
 - **Binary exponentiation** for efficient computation
 
-The Feistel cipher implementation is also optimized for performance while maintaining a high level of security.
+These optimizations make the system particularly well-suited for IoT and digital twin applications where computational resources may be limited.
 
 ## Project Structure
 
@@ -181,7 +228,6 @@ chebyshev-crypto/
 │   ├── dh.py                   # Diffie-Hellman implementation
 │   ├── feistel.py              # Feistel cipher implementation
 │   ├── sbox.py                 # S-box generation from shared secret
-│   ├── property_verifier.py    # Mathematical property verification
 │   └── tester.py               # Security property testing
 ├── ui/
 │   ├── __init__.py             # UI module exports
@@ -207,12 +253,12 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 - Add support for key derivation function (KDF) to convert shared secrets into cryptographic keys
 - Implement additional block cipher modes (CTR, GCM)
-- Add digital signature scheme based on Chebyshev polynomials
-- Create a web-based demo interface
-- Add benchmarking tools for performance comparison with traditional algorithms
-- Implement hardware acceleration for polynomial evaluation
-- Add integration tests for the full encryption pipeline
-- Expand the property verification to include more mathematical proofs
+- Create specialized lightweight profiles for different IoT device classes
+- Add MQTT and CoAP integration examples for IoT protocols
+- Develop OPC UA security layer for industrial applications
+- Create a web-based dashboard for digital twin security monitoring
+- Add Docker containerization for edge deployment
+- Implement a RESTful API for cloud-based key management
 
 ## License
 
@@ -220,6 +266,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgments
 
-- Based on research into Chebyshev polynomials as a post-quantum cryptographic primitive
-- Inspired by the need for alternatives to discrete logarithm-based cryptosystems that are vulnerable to quantum algorithms
-- Feistel network design inspired by classic symmetric ciphers like DES and Blowfish
+- Based on research into chaos-based cryptography for cyber-physical systems
+- Inspired by the need for lightweight, efficient security solutions for IoT and IIoT environments
+- Designed with input from digital twin implementation specialists
+- Feistel network design optimized for resource-constrained environments

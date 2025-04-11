@@ -52,7 +52,140 @@ class FeistelCipher:
         self.inverse_sbox = [0] * self.sbox_size
         for i, v in enumerate(sbox):
             self.inverse_sbox[v % self.sbox_size] = i
+    
+    # [Rest of the methods unchanged until encrypt/decrypt]
+    
+    def encrypt(self, plaintext: bytes, key: Optional[bytes] = None, shared_secret: Optional[int] = None) -> bytes:
+        """
+        Encrypt plaintext using the Feistel cipher in CBC mode with IV.
+        
+        Args:
+            plaintext: The plaintext to encrypt
+            key: The encryption key (uses S-box as key if None)
+            shared_secret: Optional shared secret from DH exchange to derive key
             
+        Returns:
+            Ciphertext with IV prepended
+        """
+        # Generate a random IV
+        iv = os.urandom(self.block_size)
+        
+        # Use shared secret if provided
+        if shared_secret is not None:
+            # Convert shared secret to bytes
+            secret_bytes = shared_secret.to_bytes((shared_secret.bit_length() + 7) // 8, byteorder='big')
+            # Use SHA-256 hash of shared secret as key
+            key = hashlib.sha256(secret_bytes).digest()
+        # Use S-box as key if none provided - handle various S-box sizes
+        elif key is None:
+            # Use first 32 bytes of S-box as key, handling case when S-box is smaller
+            key_size = min(32, self.sbox_size)
+            key_bytes = bytearray(32)  # Initialize with zeros
+            for i in range(key_size):
+                key_bytes[i % 32] = self.sbox[i] % 256
+            key = bytes(key_bytes)
+            
+        # Generate round subkeys
+        subkeys = self._generate_subkeys(key)
+        
+        # Pad the plaintext
+        padded_plaintext = self._pad_data(plaintext)
+        
+        # Process each block in CBC mode
+        blocks = [padded_plaintext[i:i+self.block_size] 
+                 for i in range(0, len(padded_plaintext), self.block_size)]
+        
+        # First block XORed with IV
+        prev_block = iv
+        ciphertext_blocks = []
+        
+        for block in blocks:
+            # XOR with previous ciphertext block (or IV for first block)
+            xored_block = bytearray(self.block_size)
+            for i in range(self.block_size):
+                xored_block[i] = block[i] ^ prev_block[i]
+                
+            # Process through Feistel network
+            encrypted_block = self._process_block(bytes(xored_block), subkeys, encrypt=True)
+            ciphertext_blocks.append(encrypted_block)
+            prev_block = encrypted_block
+            
+        # Prepend the IV to the ciphertext
+        return iv + b''.join(ciphertext_blocks)
+    
+    def decrypt(self, ciphertext: bytes, key: Optional[bytes] = None, shared_secret: Optional[int] = None) -> bytes:
+        """
+        Decrypt ciphertext using the Feistel cipher in CBC mode.
+        
+        Args:
+            ciphertext: The ciphertext to decrypt, with IV prepended
+            key: The decryption key (uses S-box as key if None)
+            shared_secret: Optional shared secret from DH exchange to derive key
+            
+        Returns:
+            Decrypted plaintext with padding removed
+            
+        Raises:
+            ValueError: If ciphertext is too short to contain an IV
+        """
+        # Check if ciphertext is long enough to contain IV
+        if len(ciphertext) < self.block_size:
+            raise ValueError(f"Ciphertext too short, must be at least {self.block_size} bytes to contain IV")
+            
+        # Extract IV
+        iv = ciphertext[:self.block_size]
+        ciphertext = ciphertext[self.block_size:]
+        
+        # Handle empty ciphertext after IV
+        if not ciphertext:
+            return b''
+        
+        # Use shared secret if provided
+        if shared_secret is not None:
+            # Convert shared secret to bytes
+            secret_bytes = shared_secret.to_bytes((shared_secret.bit_length() + 7) // 8, byteorder='big')
+            # Use SHA-256 hash of shared secret as key
+            key = hashlib.sha256(secret_bytes).digest()    
+        # Use S-box as key if none provided - handle various S-box sizes
+        elif key is None:
+            # Use first 32 bytes of S-box as key, handling case when S-box is smaller
+            key_size = min(32, self.sbox_size)
+            key_bytes = bytearray(32)  # Initialize with zeros
+            for i in range(key_size):
+                key_bytes[i % 32] = self.sbox[i] % 256
+            key = bytes(key_bytes)
+            
+        # Generate round subkeys
+        subkeys = self._generate_subkeys(key)
+        
+        # Process each block in CBC mode
+        blocks = [ciphertext[i:i+self.block_size] 
+                 for i in range(0, len(ciphertext), self.block_size)]
+        
+        plaintext_blocks = []
+        prev_block = iv
+        
+        for block in blocks:
+            # Process through Feistel network (reverse order for decryption)
+            decrypted_block = self._process_block(block, subkeys, encrypt=False)
+            
+            # XOR with previous ciphertext block (or IV for first block)
+            plaintext_block = bytearray(len(decrypted_block))
+            for i in range(len(decrypted_block)):
+                plaintext_block[i] = decrypted_block[i] ^ prev_block[i % len(prev_block)]
+                
+            plaintext_blocks.append(bytes(plaintext_block))
+            prev_block = block
+            
+        # Combine blocks and remove padding
+        try:
+            return self._unpad_data(b''.join(plaintext_blocks))
+        except ValueError as e:
+            # Handle padding errors gracefully
+            print(f"Warning: Padding error during decryption: {e}")
+            return b''.join(plaintext_blocks)
+    
+    # [Add the remaining methods from the original code here - _pad_data, _unpad_data, _generate_subkeys, _round_function, _process_block, get_cipher_info]
     def _pad_data(self, data: bytes) -> bytes:
         """
         Pad data to be a multiple of block_size using PKCS#7 padding.
@@ -262,123 +395,7 @@ class FeistelCipher:
             
         # Final swap (undo the last swap that occurred in the loop)
         return bytes(R) + bytes(L)
-    
-    def encrypt(self, plaintext: bytes, key: Optional[bytes] = None) -> bytes:
-        """
-        Encrypt plaintext using the Feistel cipher in CBC mode with IV.
         
-        Args:
-            plaintext: The plaintext to encrypt
-            key: The encryption key (uses S-box as key if None)
-            
-        Returns:
-            Ciphertext with IV prepended
-        """
-        # Generate a random IV
-        iv = os.urandom(self.block_size)
-        
-        # Use S-box as key if none provided - handle various S-box sizes
-        if key is None:
-            # Use first 32 bytes of S-box as key, handling case when S-box is smaller
-            key_size = min(32, self.sbox_size)
-            key_bytes = bytearray(32)  # Initialize with zeros
-            for i in range(key_size):
-                key_bytes[i % 32] = self.sbox[i] % 256
-            key = bytes(key_bytes)
-            
-        # Generate round subkeys
-        subkeys = self._generate_subkeys(key)
-        
-        # Pad the plaintext
-        padded_plaintext = self._pad_data(plaintext)
-        
-        # Process each block in CBC mode
-        blocks = [padded_plaintext[i:i+self.block_size] 
-                 for i in range(0, len(padded_plaintext), self.block_size)]
-        
-        # First block XORed with IV
-        prev_block = iv
-        ciphertext_blocks = []
-        
-        for block in blocks:
-            # XOR with previous ciphertext block (or IV for first block)
-            xored_block = bytearray(self.block_size)
-            for i in range(self.block_size):
-                xored_block[i] = block[i] ^ prev_block[i]
-                
-            # Process through Feistel network
-            encrypted_block = self._process_block(bytes(xored_block), subkeys, encrypt=True)
-            ciphertext_blocks.append(encrypted_block)
-            prev_block = encrypted_block
-            
-        # Prepend the IV to the ciphertext
-        return iv + b''.join(ciphertext_blocks)
-    
-    def decrypt(self, ciphertext: bytes, key: Optional[bytes] = None) -> bytes:
-        """
-        Decrypt ciphertext using the Feistel cipher in CBC mode.
-        
-        Args:
-            ciphertext: The ciphertext to decrypt, with IV prepended
-            key: The decryption key (uses S-box as key if None)
-            
-        Returns:
-            Decrypted plaintext with padding removed
-            
-        Raises:
-            ValueError: If ciphertext is too short to contain an IV
-        """
-        # Check if ciphertext is long enough to contain IV
-        if len(ciphertext) < self.block_size:
-            raise ValueError(f"Ciphertext too short, must be at least {self.block_size} bytes to contain IV")
-            
-        # Extract IV
-        iv = ciphertext[:self.block_size]
-        ciphertext = ciphertext[self.block_size:]
-        
-        # Handle empty ciphertext after IV
-        if not ciphertext:
-            return b''
-            
-        # Use S-box as key if none provided - handle various S-box sizes
-        if key is None:
-            # Use first 32 bytes of S-box as key, handling case when S-box is smaller
-            key_size = min(32, self.sbox_size)
-            key_bytes = bytearray(32)  # Initialize with zeros
-            for i in range(key_size):
-                key_bytes[i % 32] = self.sbox[i] % 256
-            key = bytes(key_bytes)
-            
-        # Generate round subkeys
-        subkeys = self._generate_subkeys(key)
-        
-        # Process each block in CBC mode
-        blocks = [ciphertext[i:i+self.block_size] 
-                 for i in range(0, len(ciphertext), self.block_size)]
-        
-        plaintext_blocks = []
-        prev_block = iv
-        
-        for block in blocks:
-            # Process through Feistel network (reverse order for decryption)
-            decrypted_block = self._process_block(block, subkeys, encrypt=False)
-            
-            # XOR with previous ciphertext block (or IV for first block)
-            plaintext_block = bytearray(len(decrypted_block))
-            for i in range(len(decrypted_block)):
-                plaintext_block[i] = decrypted_block[i] ^ prev_block[i % len(prev_block)]
-                
-            plaintext_blocks.append(bytes(plaintext_block))
-            prev_block = block
-            
-        # Combine blocks and remove padding
-        try:
-            return self._unpad_data(b''.join(plaintext_blocks))
-        except ValueError as e:
-            # Handle padding errors gracefully
-            print(f"Warning: Padding error during decryption: {e}")
-            return b''.join(plaintext_blocks)
-            
     def get_cipher_info(self) -> Dict[str, int]:
         """
         Get information about the cipher configuration.

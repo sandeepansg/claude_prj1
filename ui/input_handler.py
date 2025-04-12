@@ -3,6 +3,7 @@ Input handler for the Chebyshev cryptosystem.
 Handles all user input operations.
 """
 from chebyshev.security import SecurityParams
+import base64
 
 
 class InputHandler:
@@ -87,6 +88,93 @@ class InputHandler:
         return None
 
     @staticmethod
+    def get_manual_key_choice():
+        """
+        Ask user if they want to manually enter private keys.
+        
+        Returns:
+            bool: True if user wants to manually enter keys, False otherwise
+        """
+        print("\nKey Generation Options")
+        print("-" * 30)
+        print("1. Automatically generate private keys")
+        print("2. Manually enter private keys")
+        
+        while True:
+            choice = input("Select an option [default=1]: ")
+            if not choice.strip() or choice == "1":
+                return False
+            elif choice == "2":
+                return True
+            else:
+                print("Invalid option. Please enter 1 or 2.")
+
+    @staticmethod
+    def get_encryption_key_choice(shared_key):
+        """
+        Ask user whether to use the shared key from DH exchange or enter a custom key.
+        
+        Args:
+            shared_key: The calculated shared key from DH exchange
+            
+        Returns:
+            int: Either the shared key or a custom key
+        """
+        print("\nEncryption Key Options")
+        print("-" * 30)
+        print("1. Use shared secret key from key exchange")
+        print("2. Enter a custom encryption key")
+        
+        while True:
+            choice = input("Select an option [default=1]: ")
+            if not choice.strip() or choice == "1":
+                return shared_key
+            elif choice == "2":
+                return InputHandler.get_custom_encryption_key()
+            else:
+                print("Invalid option. Please enter 1 or 2.")
+
+    @staticmethod
+    def get_custom_encryption_key():
+        """
+        Get a custom encryption key from user.
+        
+        Returns:
+            int: The custom encryption key
+        """
+        print("\nEnter a custom encryption key")
+        
+        attempts = 0
+        max_attempts = 3
+        
+        while attempts < max_attempts:
+            key_input = input("Custom encryption key (decimal or 0x for hex): ")
+            if not key_input.strip():
+                print("Error: Custom key cannot be empty")
+                attempts += 1
+                continue
+                
+            try:
+                # Check if it's a hex input
+                if key_input.lower().startswith("0x"):
+                    custom_key = int(key_input, 16)
+                else:
+                    custom_key = int(key_input)
+                
+                if custom_key <= 0:
+                    print("Error: Encryption key must be a positive integer")
+                else:
+                    return custom_key
+            except ValueError:
+                print("Please enter a valid integer (decimal or with 0x prefix for hex)")
+                
+            attempts += 1
+            
+        print(f"Failed to get valid custom key after {max_attempts} attempts")
+        print("Using a default encryption key")
+        return 0x12345678  # Default fallback
+
+    @staticmethod
     def get_test_count():
         """Get consistent test count for all security property tests."""
         print("\nTest Configuration")
@@ -169,4 +257,47 @@ class InputHandler:
             try:
                 box_size = int(size_input)
                 if box_size < SecurityParams.MIN_SBOX_SIZE:
-                    print(f"Error: S-box size must be at least {SecurityParams.MIN_SBOX_SIZE} for
+                    print(f"Error: S-box size must be at least {SecurityParams.MIN_SBOX_SIZE} for security")
+                    continue
+                elif box_size > SecurityParams.MAX_SBOX_SIZE:
+                    print(f"Error: S-box size must be at most {SecurityParams.MAX_SBOX_SIZE} for performance")
+                    continue
+                return box_size
+            except ValueError:
+                print("Please enter a valid number")
+        
+        return box_size  # Return default if we somehow get here
+
+    @staticmethod
+    def get_entropy():
+        """
+        Get optional user entropy for key generation.
+        
+        Returns:
+            str: User-provided entropy string or empty string if skipped
+        """
+        print("\nEntropy Collection (Optional)")
+        print("-" * 30)
+        print("You can provide additional entropy for key generation.")
+        print("This helps improve randomness for cryptographic operations.")
+        print("Press Enter to skip or type any random characters:")
+        
+        entropy = input("> ")
+        return entropy
+    
+    @staticmethod
+    def get_sample_message():
+        """
+        Get a sample message from the user to encrypt.
+        
+        Returns:
+            str: The message to encrypt
+        """
+        print("\nMessage Input")
+        print("-" * 30)
+        
+        while True:
+            message = input("Enter a message to encrypt: ")
+            if message.strip():
+                return message
+            print("Message cannot be empty. Please enter text to encrypt.")

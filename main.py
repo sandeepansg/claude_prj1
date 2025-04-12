@@ -54,7 +54,7 @@ def run_demo():
             return
 
         try:
-            # Get user's key exchange preference
+            # Get user's key exchange preference (now returns 1-4 integer)
             key_choice = ui.get_manual_key_choice()
 
             # Handle manual key entry options

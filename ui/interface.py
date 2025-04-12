@@ -83,9 +83,18 @@ class UserInterface:
         """Get user choice for manual key entry."""
         return self.input_handler.get_manual_key_choice()
 
-    def get_manual_private_key(self, party_name, default_key, encoded_default):
-        """Get manually entered private key."""
-        return self.input_handler.get_manual_private_key(party_name, default_key, encoded_default)
+    def get_manual_private_key(self, party_name, bit_length):
+        """
+        Get manually entered private key.
+        
+        Args:
+            party_name: Name of the party (e.g., "Alice" or "Bob")
+            bit_length: Required bit length for the private key
+            
+        Returns:
+            Manually entered private key as int, or None if user skips
+        """
+        return self.input_handler.get_manual_private_key(party_name, bit_length)
 
     def get_encryption_key_choice(self, shared_key):
         """Choose whether to use generated shared key or enter a custom key for encryption."""

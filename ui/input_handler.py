@@ -1,11 +1,3 @@
-"""
-Input handler for the Chebyshev cryptosystem.
-Handles all user input operations.
-"""
-from chebyshev.security import SecurityParams
-import base64
-
-
 class InputHandler:
     """Handles user inputs and validation."""
     
@@ -42,45 +34,84 @@ class InputHandler:
         return SecurityParams.DEFAULT_PRIVATE_BITS
         
     @staticmethod
-    def get_manual_private_key(party_name, bit_length):
+    def get_manual_private_key(party_name, default_key, encoded_key):
         """
         Get a manually entered private key that meets the bit length requirements.
         
         Args:
             party_name: Name of the party (e.g., "Alice" or "Bob")
-            bit_length: Required bit length for the private key
+            default_key: A default key value to show as example
+            encoded_key: Base64 encoded version of the default key
             
         Returns:
-            Manually entered private key as int, or None if user skips
+            Manually entered private key as int or encoded string, or None if user skips
         """
+        bit_length = default_key.bit_length()
         print(f"\nEnter a {bit_length}-bit private key for {party_name} [press enter to generate randomly]")
         print(f"The key must be between {2**(bit_length-1)} and {2**bit_length - 1}")
+        print(f"Default key (hex): 0x{default_key:X}")
+        print(f"Default key (base64): {encoded_key}")
+        
+        print("\nEntry options:")
+        print("1. Enter decimal integer")
+        print("2. Enter hexadecimal (with 0x prefix)")
+        print("3. Enter base64 encoded key")
+        print("4. Skip (use random key)")
+        
+        entry_choice = "1"  # Default to decimal
+        while True:
+            choice = input("Select entry format [default=1]: ")
+            if not choice.strip() or choice in ["1", "2", "3", "4"]:
+                entry_choice = choice if choice.strip() else "1"
+                break
+            print("Invalid choice. Please select 1-4.")
+                
+        if entry_choice == "4":
+            return None  # Skip manual entry
         
         attempts = 0
         max_attempts = 3
         
         while attempts < max_attempts:
-            key_input = input(f"{party_name}'s private key (decimal): ")
-            if not key_input.strip():
-                return None  # Skip manual entry
+            if entry_choice == "1":
+                key_input = input(f"{party_name}'s private key (decimal): ")
+                if not key_input.strip():
+                    return None  # Skip manual entry
+                try:
+                    private_key = int(key_input)
+                except ValueError:
+                    print("Please enter a valid integer")
+                    attempts += 1
+                    continue
+            elif entry_choice == "2":
+                key_input = input(f"{party_name}'s private key (hex with 0x prefix): ")
+                if not key_input.strip():
+                    return None  # Skip manual entry
+                try:
+                    private_key = int(key_input, 16)
+                except ValueError:
+                    print("Please enter a valid hexadecimal number with 0x prefix")
+                    attempts += 1
+                    continue
+            elif entry_choice == "3":
+                key_input = input(f"{party_name}'s private key (base64): ")
+                if not key_input.strip():
+                    return None  # Skip manual entry
+                # Return as string to indicate it's already encoded
+                return key_input
                 
-            try:
-                private_key = int(key_input)
-                
-                # Check bit length
-                key_bits = private_key.bit_length()
-                min_bits = bit_length - 1  # Allow keys that are one bit smaller (leading zeros)
-                max_bits = bit_length
-                
-                if key_bits < min_bits or key_bits > max_bits:
-                    print(f"Error: Private key must be {bit_length} bits (got {key_bits} bits)")
-                    print(f"Must be between {2**(bit_length-1)} and {2**bit_length - 1}")
-                elif private_key <= 0:
-                    print("Error: Private key must be a positive integer")
-                else:
-                    return private_key
-            except ValueError:
-                print("Please enter a valid integer")
+            # Check bit length
+            key_bits = private_key.bit_length()
+            min_bits = bit_length - 1  # Allow keys that are one bit smaller (leading zeros)
+            max_bits = bit_length
+            
+            if key_bits < min_bits or key_bits > max_bits:
+                print(f"Error: Private key must be {bit_length} bits (got {key_bits} bits)")
+                print(f"Must be between {2**(bit_length-1)} and {2**bit_length - 1}")
+            elif private_key <= 0:
+                print("Error: Private key must be a positive integer")
+            else:
+                return private_key
                 
             attempts += 1
             
@@ -93,21 +124,26 @@ class InputHandler:
         Ask user if they want to manually enter private keys.
         
         Returns:
-            bool: True if user wants to manually enter keys, False otherwise
+            int: 1 = Auto for both, 2 = Manual Alice, 3 = Manual Bob, 4 = Manual both
         """
         print("\nKey Generation Options")
         print("-" * 30)
-        print("1. Automatically generate private keys")
-        print("2. Manually enter private keys")
+        print("1. Automatically generate both private keys")
+        print("2. Manually enter Alice's private key only")
+        print("3. Manually enter Bob's private key only")
+        print("4. Manually enter both private keys")
         
         while True:
             choice = input("Select an option [default=1]: ")
-            if not choice.strip() or choice == "1":
-                return False
-            elif choice == "2":
-                return True
-            else:
-                print("Invalid option. Please enter 1 or 2.")
+            if not choice.strip():
+                return 1
+            try:
+                choice_num = int(choice)
+                if 1 <= choice_num <= 4:
+                    return choice_num
+                print("Invalid option. Please enter a number between 1-4.")
+            except ValueError:
+                print("Invalid option. Please enter a number between 1-4.")
 
     @staticmethod
     def get_encryption_key_choice(shared_key):
@@ -118,7 +154,7 @@ class InputHandler:
             shared_key: The calculated shared key from DH exchange
             
         Returns:
-            int: Either the shared key or a custom key
+            tuple: (key, source) where key is the encryption key to use and source is 1 for shared or 2 for custom
         """
         print("\nEncryption Key Options")
         print("-" * 30)
@@ -128,9 +164,10 @@ class InputHandler:
         while True:
             choice = input("Select an option [default=1]: ")
             if not choice.strip() or choice == "1":
-                return shared_key
+                return shared_key, 1
             elif choice == "2":
-                return InputHandler.get_custom_encryption_key()
+                custom_key = InputHandler.get_custom_encryption_key()
+                return custom_key, 2
             else:
                 print("Invalid option. Please enter 1 or 2.")
 

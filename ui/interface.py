@@ -80,22 +80,36 @@ class UserInterface:
         self.analysis_display.show_encryption_results(plaintext, ciphertext, decrypted, time_taken, feistel_properties, custom_key)
 
     def get_manual_key_choice(self):
-        """Get user choice for manual key entry."""
+        """
+        Get user choice for manual key entry.
+        
+        Returns:
+            int: 1 = Auto for both, 2 = Manual Alice, 3 = Manual Bob, 4 = Manual both
+        """
         return self.input_handler.get_manual_key_choice()
 
-    def get_manual_private_key(self, party_name, bit_length):
+    def get_manual_private_key(self, party_name, default_key, encoded_key):
         """
         Get manually entered private key.
         
         Args:
             party_name: Name of the party (e.g., "Alice" or "Bob")
-            bit_length: Required bit length for the private key
+            default_key: A default key to display as an example
+            encoded_key: Base64 encoded version of the default key
             
         Returns:
-            Manually entered private key as int, or None if user skips
+            Manually entered private key as int or base64 string, or None if user skips
         """
-        return self.input_handler.get_manual_private_key(party_name, bit_length)
+        return self.input_handler.get_manual_private_key(party_name, default_key, encoded_key)
 
     def get_encryption_key_choice(self, shared_key):
-        """Choose whether to use generated shared key or enter a custom key for encryption."""
+        """
+        Choose whether to use generated shared key or enter a custom key for encryption.
+        
+        Args:
+            shared_key: The shared secret key from DH exchange
+            
+        Returns:
+            tuple: (key, source) where key is the encryption key to use and source is 1 for shared or 2 for custom
+        """
         return self.input_handler.get_encryption_key_choice(shared_key)
